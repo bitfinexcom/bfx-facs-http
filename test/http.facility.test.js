@@ -375,6 +375,30 @@ describe('http facility tests', () => {
       resp = await fac.request('/foo/bar/9?', { method: 'get', encoding: 'json', qs: 'a=1&b=c' })
       expect(resp.body).to.be.deep.equal({ a: ['2', '1'], b: 'c', d: 'e' })
     })
+
+    it('should support basic authorization', async () => {
+      app.get('/foo/bar/basic-auth', (req, res) => {
+        res.send(req.headers.authorization)
+      })
+
+      const resp = await fac.request('/foo/bar/basic-auth', {
+        method: 'get',
+        auth: {
+          username: 'user',
+          password: 'pass'
+        }
+      })
+      expect(resp.body).to.eq(`Basic ${Buffer.from('user:pass').toString('base64')}`)
+    })
+
+    it('should not send basic authorization', async () => {
+      app.get('/foo/bar/no-basic-auth', (req, res) => {
+        res.send(req.headers.authorization)
+      })
+
+      const resp = await fac.request('/foo/bar/no-basic-auth', { method: 'get' })
+      expect(resp.body).to.eq('')
+    })
   })
 
   describe('_methodRequest tests', () => {

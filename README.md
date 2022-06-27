@@ -24,6 +24,10 @@ Params:
     - `method<String?>` - Optional http method, currently supported `get`, `head`, `post`, `put`, `patch`,
                          `delete`, `options`. Default value is `get`
     - `redirect<Boolean?>` - Optional, follow redirects or treat them as errors, default is treat as error
+    - `auth<Object?>` - HTTP Basic authorization credentials. Overwrites header `authorization`. Please note
+                        only HTTP Basic auth is configurable through this parameter.
+      - `username<String?>`
+      - `password<String?>`
     - `agent<http.Agent?>` - Optional user agent
     - `compress<Boolean?>` - Optional, support gzip/deflate content encoding
     - `timeout<Number?>` - Optional request timeout, default is opt provided in fac setup (3s)

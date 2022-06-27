@@ -81,6 +81,14 @@ class HttpFacility extends Base {
         reqOpts.body = JSON.stringify(reqOpts.body)
       }
 
+      if (opts.auth) {
+        reqOpts.headers = reqOpts.headers || {}
+        const username = opts.auth.username || ''
+        const password = opts.auth.password || ''
+        const base64 = Buffer.from(`${username}:${password}`).toString('base64')
+        reqOpts.headers.authorization = `Basic ${base64}`
+      }
+
       let httpErr = null
       const resp = await fetch(url, reqOpts)
       let respBody = null
