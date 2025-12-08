@@ -2,7 +2,7 @@
 
 const _ = require('lodash')
 const async = require('async')
-const Base = require('bfx-facs-base')
+const Base = require('@bitfinex/bfx-facs-base')
 const fetch = require('node-fetch')
 const HttpError = require('./http.error')
 
