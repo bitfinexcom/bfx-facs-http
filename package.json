@@ -1,5 +1,5 @@
 {
-  "name": "bfx-facs-http",
+  "name": "@bitfinex/bfx-facs-http",
   "version": "1.0.0",
   "description": "Bitfinex HTTP Facility",
   "author": "vigan.abd",
@@ -21,7 +21,7 @@
     "lodash": "^4.17.21",
     "node-fetch": "2.6.7"
   },
-  "engine": {
+  "engines": {
     "node": ">=16.0"
   },
   "main": "index.js",
