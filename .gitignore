@@ -3,7 +3,6 @@ node_modules
 npm-debug.log
 logs
 sec
-package-lock.json
 *.swp
 *.swo
 .nyc_output
