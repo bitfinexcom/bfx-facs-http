@@ -16,7 +16,7 @@
     "unit": "NODE_ENV=test mocha ./test"
   },
   "dependencies": {
-    "@bitfinex/bfx-facs-base": "git+https://github.com/bitfinexcom/bfx-facs-base.git",
+    "@bitfinex/bfx-facs-base": "git+https://github.com/sargekhan/bfx-facs-base.git#feat/js-config-support",
     "async": "^2.6.3",
     "lodash": "^4.17.21",
     "node-fetch": "2.6.7"
