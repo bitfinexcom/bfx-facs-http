@@ -21,6 +21,7 @@ class HttpFacility extends Base {
       next => {
         this.baseUrl = (this.opts.baseUrl || '').replace(/\/$/, '')
         this.timeout = this.opts.timeout || 0 // nodejs default timeout
+        this.abortTimeout = this.opts.abortTimeout || 0
         this.debug = !!this.opts.debug
         this.qs = this.opts.qs ? new URLSearchParams(this.opts.qs).toString() : ''
         next()
@@ -48,6 +49,14 @@ class HttpFacility extends Base {
       let url = path.includes('://') ? path : `${this.baseUrl}/${path.replace(/^\//, '')}`
 
       const reqOpts = _.pick(opts, ['body', 'headers', 'method', 'redirect', 'agent', 'compress', 'timeout', 'qs', 'signal'])
+
+      const abortTimeout = opts.abortTimeout || this.abortTimeout
+      let abortTimer = null
+      if (abortTimeout && !reqOpts.signal) {
+        const controller = new AbortController()
+        reqOpts.signal = controller.signal
+        abortTimer = setTimeout(() => controller.abort(), abortTimeout)
+      }
 
       let urlHasQParams = url.includes('?')
       if (this.qs) {
@@ -90,46 +99,50 @@ class HttpFacility extends Base {
       }
 
       let httpErr = null
-      const resp = await fetch(url, reqOpts)
-      let respBody = null
-      const headers = _.mapValues(resp.headers.raw(), (v) => {
-        return v.length === 1 ? v[0] : v
-      })
+      try {
+        const resp = await fetch(url, reqOpts)
+        let respBody = null
+        const headers = _.mapValues(resp.headers.raw(), (v) => {
+          return v.length === 1 ? v[0] : v
+        })
 
-      if (!resp.ok) {
-        httpErr = new HttpError(
-          `ERR_HTTP: ${resp.status} - ${resp.statusText}`,
-          resp.status,
-          resp.statusText,
-          headers
-        )
-      }
-
-      if (reqOpts.method !== 'head' && reqOpts.method !== 'options') {
-        try {
-          switch (resEnc) {
-            case 'json':
-              respBody = await resp.json()
-              break
-            case 'text':
-              respBody = await resp.text()
-              break
-            case 'raw':
-              respBody = resp.body
-              break
-            default:
-              respBody = await resp.buffer()
-              break
-          }
-        } catch (err) {
-          if (this.debug) console.error(new Date().toISOString(), err)
-          if (!httpErr) return this._response(err, null, headers, cb)
+        if (!resp.ok) {
+          httpErr = new HttpError(
+            `ERR_HTTP: ${resp.status} - ${resp.statusText}`,
+            resp.status,
+            resp.statusText,
+            headers
+          )
         }
+
+        if (reqOpts.method !== 'head' && reqOpts.method !== 'options') {
+          try {
+            switch (resEnc) {
+              case 'json':
+                respBody = await resp.json()
+                break
+              case 'text':
+                respBody = await resp.text()
+                break
+              case 'raw':
+                respBody = resp.body
+                break
+              default:
+                respBody = await resp.buffer()
+                break
+            }
+          } catch (err) {
+            if (this.debug) console.error(new Date().toISOString(), err)
+            if (!httpErr) return this._response(err, null, headers, cb)
+          }
+        }
+
+        if (httpErr && respBody) httpErr.setResponse(respBody)
+
+        return this._response(httpErr, respBody, headers, cb)
+      } finally {
+        if (abortTimer) clearTimeout(abortTimer)
       }
-
-      if (httpErr && respBody) httpErr.setResponse(respBody)
-
-      return this._response(httpErr, respBody, headers, cb)
     } catch (err) {
       return this._response(err, null, {}, cb)
     }
