@@ -412,6 +412,79 @@ describe('http facility tests', () => {
     })
   })
 
+  describe('abortTimeout tests', () => {
+    let abortFac = null
+
+    before((done) => {
+      app.get('/foo/bar/slow', (req, res) => {
+        const delay = parseInt(req.query.delay) || 3000
+        setTimeout(() => res.send('slow response'), delay)
+      })
+
+      abortFac = new HttpFacility({}, { baseUrl: 'http://127.0.0.1:7070', abortTimeout: 500 }, { env: 'test' })
+      abortFac.start(done)
+    })
+
+    after((done) => {
+      abortFac.stop(done)
+    })
+
+    it('should default abortTimeout to 0 when not configured', () => {
+      expect(fac.abortTimeout).to.be.equal(0)
+    })
+
+    it('should set abortTimeout from opts', () => {
+      expect(abortFac.abortTimeout).to.be.equal(500)
+    })
+
+    it('should abort slow requests with facility-level abortTimeout', async () => {
+      await expect(
+        abortFac.request('/foo/bar/slow?delay=3000', { timeout: 30000 })
+      ).to.be.rejectedWith(/aborted/)
+    })
+
+    it('should succeed when request completes before abortTimeout', async () => {
+      const { body: resp } = await abortFac.request('/foo/bar/slow?delay=50', { timeout: 30000 })
+      expect(resp).to.be.equal('slow response')
+    })
+
+    it('should allow per-request abortTimeout to override facility-level', async () => {
+      const { body: resp } = await abortFac.request('/foo/bar/slow?delay=200', { abortTimeout: 2000, timeout: 30000 })
+      expect(resp).to.be.equal('slow response')
+    })
+
+    it('should abort with per-request abortTimeout on fac without default', async () => {
+      await expect(
+        fac.request('/foo/bar/slow?delay=3000', { abortTimeout: 200, timeout: 30000 })
+      ).to.be.rejectedWith(/aborted/)
+    })
+
+    it('should not create auto-controller when caller provides signal', async () => {
+      const controller = new AbortController()
+      setTimeout(() => controller.abort(), 100)
+
+      await expect(
+        abortFac.request('/foo/bar/slow?delay=3000', { signal: controller.signal, abortTimeout: 30000, timeout: 30000 })
+      ).to.be.rejectedWith(/aborted/)
+    })
+
+    it('should work with callback pattern', async () => {
+      const result = await new Promise((resolve) => {
+        abortFac.request('/foo/bar/slow?delay=3000', { timeout: 30000 }, (err) => {
+          resolve(err)
+        })
+      })
+      expect(result).to.not.be.null()
+      expect(result.name).to.be.equal('AbortError')
+    })
+
+    it('should work through convenience methods', async () => {
+      await expect(
+        abortFac.get('/foo/bar/slow?delay=3000', { timeout: 30000 })
+      ).to.be.rejectedWith(/aborted/)
+    })
+  })
+
   describe('_methodRequest tests', () => {
     before(() => {
       app.get('/method_request_test', (req, res) => {

@@ -7,8 +7,9 @@ A facility that simplifies making http requests both on promise and callback app
 Fac doesn't support config files but supports the options defined below:
 - `baseUrl<String?>` - Optional base url
 - `timeout<Number?>` - Optional request timeout, default one is node default timeout (0)
+- `abortTimeout<Number?>` - Optional abort timeout in ms, auto-creates an AbortController that aborts the request after the specified duration. Default is 0 (disabled). Per-request `abortTimeout` overrides this value. Ignored when caller provides their own `signal`
 - `debug<(Boolean|Number)?>` - Optional debug flag, default false
-- `qs<(String|Array<String>|Object)?>` - Optional, default query string params 
+- `qs<(String|Array<String>|Object)?>` - Optional, default query string params
 
 ## API
 
@@ -40,8 +41,9 @@ Params:
                          If no value is provided it will be treated as text,
                          if unsupported value is provided it will return buffer.
                          If value is `raw` then body stream is returned, useful for file downloads
-    - `qs<(String|Array<String>|Object)?>` - Optional, query string params 
+    - `qs<(String|Array<String>|Object)?>` - Optional, query string params
     - `signal<AbortSignal?>` - Optional, abort controller signal
+    - `abortTimeout<Number?>` - Optional abort timeout in ms for this request, overrides facility-level `abortTimeout`. Ignored when `signal` is provided
   - `cb<Function?>` - Optional callback function, if not provided call will be treated as promise
 
 Response:
@@ -94,6 +96,9 @@ setTimeout(() => {
 }, 1000)
 
 const { body: resp } = await fac.request('/data', { signal: abortController.signal })
+
+// abort timeout (auto-creates AbortController)
+const { body: resp } = await fac.request('/data', { abortTimeout: 5000 })
 ```
 
 ### fac.get
