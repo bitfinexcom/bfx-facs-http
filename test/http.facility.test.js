@@ -14,6 +14,7 @@ const { expect } = chai.use(require('dirty-chai'))
   .use(require('chai-as-promised'))
 const { format } = require('util')
 const { join } = require('path')
+const { lookup } = require('node:dns')
 
 describe('http facility tests', () => {
   let srv = null
@@ -409,6 +410,49 @@ describe('http facility tests', () => {
       await expect(
         fac.request('/foo/bar/signal', { method: 'get', timeout: 30000, signal: abortController.signal })
       ).to.be.rejectedWith(/aborted/)
+    })
+
+    describe('DNS caching', () => {
+      beforeEach(() => {
+        fac.cachableLookup._cache.clear()
+        fac.opts.dnsCaching = false
+      })
+
+      it('should not perform dns caching by default', async () => {
+        await fac.request('https://example.com', { method: 'get', timeout: 1000 })
+
+        expect(fac.cachableLookup._cache.get('example.com')).to.deep.eq(undefined)
+      })
+
+      it('should support dns caching for https requests', async () => {
+        await fac.request('https://example.com', { method: 'get', timeout: 1000, dnsCaching: true })
+
+        const expectedAddress = await lookupDomain('example.com')
+        expect(fac.cachableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
+      })
+
+      it('should support dns caching for http requests', async () => {
+        await fac.request('http://example.com', { method: 'get', timeout: 1000, dnsCaching: true })
+
+        const expectedAddress = await lookupDomain('example.com')
+        expect(fac.cachableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
+      })
+
+      it('can be activated by default through fac opts', async () => {
+        fac.opts.dnsCaching = true
+
+        await fac.request('https://example.com', { method: 'get', timeout: 1000 })
+
+        const expectedAddress = await lookupDomain('example.com')
+        expect(fac.cachableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
+      })
+
+      const lookupDomain = async (domain) => new Promise((resolve, reject) => {
+        lookup(domain, null, (err, address) => {
+          if (err) return reject(err)
+          resolve(address)
+        })
+      })
     })
   })
 
