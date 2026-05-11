@@ -10,6 +10,7 @@ Fac doesn't support config files but supports the options defined below:
 - `abortTimeout<Number?>` - Optional abort timeout in ms, auto-creates an AbortController that aborts the request after the specified duration. Default is 0 (disabled). Per-request `abortTimeout` overrides this value. Ignored when caller provides their own `signal`
 - `debug<(Boolean|Number)?>` - Optional debug flag, default false
 - `qs<(String|Array<String>|Object)?>` - Optional, default query string params
+- `dnsCaching<Boolean?>` - Option dns caching, disabled by default
 
 ## API
 
@@ -44,6 +45,7 @@ Params:
     - `qs<(String|Array<String>|Object)?>` - Optional, query string params
     - `signal<AbortSignal?>` - Optional, abort controller signal
     - `abortTimeout<Number?>` - Optional abort timeout in ms for this request, overrides facility-level `abortTimeout`. Ignored when `signal` is provided
+    - `dnsCaching<Boolean?>` - Optional, enable dns caching
   - `cb<Function?>` - Optional callback function, if not provided call will be treated as promise
 
 Response:

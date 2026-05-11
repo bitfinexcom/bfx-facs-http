@@ -5,6 +5,9 @@ const async = require('async')
 const Base = require('@bitfinex/bfx-facs-base')
 const fetch = require('node-fetch')
 const HttpError = require('./http.error')
+const { lookup } = require('node:dns')
+const { Agent: HttpsAgent } = require('node:https')
+const { Agent: HttpAgent } = require('node:http')
 
 class HttpFacility extends Base {
   constructor (caller, opts, ctx) {
@@ -18,13 +21,14 @@ class HttpFacility extends Base {
   _start (cb) {
     async.series([
       next => { super._start(next) },
-      next => {
+      async () => {
         this.baseUrl = (this.opts.baseUrl || '').replace(/\/$/, '')
         this.timeout = this.opts.timeout || 0 // nodejs default timeout
         this.abortTimeout = this.opts.abortTimeout || 0
         this.debug = !!this.opts.debug
         this.qs = this.opts.qs ? new URLSearchParams(this.opts.qs).toString() : ''
-        next()
+        const CachableLookup = (await import('cacheable-lookup')).default
+        this.cachableLookup = new CachableLookup()
       }
     ], cb)
   }
@@ -96,6 +100,14 @@ class HttpFacility extends Base {
         const password = opts.auth.password || ''
         const base64 = Buffer.from(`${username}:${password}`).toString('base64')
         reqOpts.headers.authorization = `Basic ${base64}`
+      }
+
+      if (opts.dnsCaching || this.opts.dnsCaching) {
+        const Agent = ((this.baseUrl ?? '').startsWith('https://') || path.startsWith('https://')) ? HttpsAgent : HttpAgent
+        reqOpts.agent = new Agent({
+          keepAlive: true,
+          lookup: this.cachableLookup.lookup
+        })
       }
 
       let httpErr = null
