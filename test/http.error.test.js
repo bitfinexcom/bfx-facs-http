@@ -90,4 +90,21 @@ describe('http facility tests', () => {
     err.setResponse(response)
     expect(err.stack.includes(format(response))).to.be.true()
   })
+
+  it('stack trace should not duplicate multi-line headers when response is set later', () => {
+    const multiLineHeaders = {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+      server: 'cloudflare',
+      'strict-transport-security': 'max-age=31536000; includeSubDomains',
+      'x-content-type-options': 'nosniff',
+      'x-frame-options': 'sameorigin'
+    }
+    const err = new HttpError(message, status, statusText, multiLineHeaders)
+
+    err.setResponse(response)
+
+    const headerLineCount = err.stack.split("'cache-control': 'no-store'").length - 1
+    expect(headerLineCount).to.be.equal(1)
+  })
 })
