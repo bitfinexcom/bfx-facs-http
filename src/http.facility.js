@@ -7,6 +7,7 @@ const fetch = require('node-fetch')
 const HttpError = require('./http.error')
 const { Agent: HttpsAgent } = require('https')
 const { Agent: HttpAgent } = require('http')
+const CacheableLookup = require('cacheable-lookup')
 
 class HttpFacility extends Base {
   constructor (caller, opts, ctx) {
@@ -26,8 +27,7 @@ class HttpFacility extends Base {
         this.abortTimeout = this.opts.abortTimeout || 0
         this.debug = !!this.opts.debug
         this.qs = this.opts.qs ? new URLSearchParams(this.opts.qs).toString() : ''
-        const CachableLookup = (await import('cacheable-lookup')).default
-        this.cachableLookup = new CachableLookup()
+        this.cacheableLookup = new CacheableLookup()
       }
     ], cb)
   }
@@ -105,7 +105,7 @@ class HttpFacility extends Base {
         const Agent = ((this.baseUrl ?? '').startsWith('https://') || path.startsWith('https://')) ? HttpsAgent : HttpAgent
         reqOpts.agent = new Agent({
           keepAlive: true,
-          lookup: this.cachableLookup.lookup
+          lookup: this.cacheableLookup.lookup
         })
       }
 

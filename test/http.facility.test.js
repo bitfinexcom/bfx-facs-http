@@ -14,26 +14,34 @@ const { expect } = chai.use(require('dirty-chai'))
   .use(require('chai-as-promised'))
 const { format } = require('util')
 const { join } = require('path')
-const { lookup } = require('node:dns')
+const CacheableLookup = require('cacheable-lookup')
 
 describe('http facility tests', () => {
   let srv = null
   const app = express()
   let fac = new HttpFacility({}, { baseUrl: 'http://127.0.0.1:7070' }, { env: 'test' })
+  let sockets
 
   before((done) => {
+    sockets = new Set()
     fac.start((err) => {
       if (err) return done(err)
 
       app.use(express.json())
-      srv = app.listen(7070)
-      done()
+      srv = app.listen(7070, () => {
+        srv.on('connection', (socket) => {
+          sockets.add(socket)
+          socket.on('close', () => sockets.delete(socket))
+        })
+        done()
+      })
     })
   })
 
   after((done) => {
     fac.stop((err) => {
       if (err) return done(err)
+      for (const socket of sockets) socket.destroy()
       srv.close(done)
     })
   })
@@ -414,28 +422,28 @@ describe('http facility tests', () => {
 
     describe('DNS caching', () => {
       beforeEach(() => {
-        fac.cachableLookup._cache.clear()
+        fac.cacheableLookup._cache.clear()
         fac.opts.dnsCaching = false
       })
 
       it('should not perform dns caching by default', async () => {
         await fac.request('https://example.com', { method: 'get', timeout: 1000 })
 
-        expect(fac.cachableLookup._cache.get('example.com')).to.deep.eq(undefined)
+        expect(fac.cacheableLookup._cache.get('example.com')).to.deep.eq(undefined)
       })
 
       it('should support dns caching for https requests', async () => {
         await fac.request('https://example.com', { method: 'get', timeout: 1000, dnsCaching: true })
 
         const expectedAddress = await lookupDomain('example.com')
-        expect(fac.cachableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
+        expect(fac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
       })
 
       it('should support dns caching for http requests', async () => {
         await fac.request('http://example.com', { method: 'get', timeout: 1000, dnsCaching: true })
 
         const expectedAddress = await lookupDomain('example.com')
-        expect(fac.cachableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
+        expect(fac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
       })
 
       it('can be activated by default through fac opts', async () => {
@@ -444,15 +452,13 @@ describe('http facility tests', () => {
         await fac.request('https://example.com', { method: 'get', timeout: 1000 })
 
         const expectedAddress = await lookupDomain('example.com')
-        expect(fac.cachableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
+        expect(fac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
       })
 
-      const lookupDomain = async (domain) => new Promise((resolve, reject) => {
-        lookup(domain, null, (err, address) => {
-          if (err) return reject(err)
-          resolve(address)
-        })
-      })
+      const lookupDomain = async (domain) => {
+        const entry = await (new CacheableLookup()).lookupAsync(domain)
+        return entry.address
+      }
     })
   })
 
