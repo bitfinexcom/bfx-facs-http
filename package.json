@@ -9,9 +9,8 @@
     "facility"
   ],
   "scripts": {
-    "coverage": "nyc --reporter=html mocha",
-    "lint": "standard",
-    "format": "standard --fix",
+    "lint": "bfx-lint-js . --mocha",
+    "format": "bfx-lint-js . --mocha --fix",
     "test": "npm run lint && npm run unit",
     "unit": "NODE_ENV=test mocha ./test"
   },
@@ -20,10 +19,10 @@
     "async": "^2.6.3",
     "cacheable-lookup": "6.1.0",
     "lodash": "^4.17.21",
-    "node-fetch": "2.6.7"
+    "node-fetch": "^2.7.0"
   },
   "engines": {
-    "node": ">=16.0"
+    "node": ">=22.0"
   },
   "main": "index.js",
   "license": "Apache-2.0",
@@ -43,13 +42,18 @@
     }
   ],
   "devDependencies": {
+    "@bitfinex/lint-js": "1.1.0",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "dirty-chai": "^2.0.1",
     "express": "^4.17.1",
-    "mocha": "^11.7.5",
-    "nyc": "^15.1.0",
-    "sinon": "^11.1.2",
-    "standard": "^17.1.0"
+    "mocha": "^12.0.3",
+    "sinon": "^11.1.2"
+  },
+  "overrides": {
+    "mocha": {
+      "glob": "14.0.2",
+      "minimatch": "11.0.1"
+    }
   }
 }
