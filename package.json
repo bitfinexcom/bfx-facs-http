@@ -12,7 +12,7 @@
     "lint": "bfx-lint-js . --mocha",
     "format": "bfx-lint-js . --mocha --fix",
     "test": "npm run lint && npm run unit",
-    "unit": "NODE_ENV=test NODE_EXTRA_CA_CERTS=./test/fixtures/https/cert.pem mocha ./test"
+    "unit": "NODE_ENV=test mocha ./test"
   },
   "dependencies": {
     "@bitfinex/bfx-facs-base": "^1.1.0",

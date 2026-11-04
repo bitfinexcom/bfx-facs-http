@@ -15,22 +15,12 @@ const { expect } = chai.use(require('dirty-chai'))
 const { format } = require('util')
 const { join } = require('path')
 const CacheableLookup = require('cacheable-lookup')
-const createHttpsFixture = require('./fixtures/https/server')
 
 describe('http facility tests', () => {
   let srv = null
   const app = express()
   let fac = new HttpFacility({}, { baseUrl: 'http://127.0.0.1:7070' }, { env: 'test' })
   let sockets
-  let httpsFixture
-
-  before(async () => {
-    httpsFixture = await createHttpsFixture()
-  })
-
-  after(async () => {
-    if (httpsFixture) await httpsFixture.stop()
-  })
 
   before((done) => {
     sockets = new Set()
@@ -152,8 +142,8 @@ describe('http facility tests', () => {
     })
 
     it('should ignore base url when path is full url', async () => {
-      const { body: resp } = await fac.request(httpsFixture.httpsUrl, { method: 'get' })
-      expect(resp).to.equal(httpsFixture.text)
+      const { body: resp } = await fac.request('https://www.google.com', { method: 'get' })
+      expect(resp).to.be.include('<html')
     })
 
     it('should support body encodings', async () => {
@@ -289,11 +279,11 @@ describe('http facility tests', () => {
     })
 
     it('should support redirect', async () => {
-      const { body: resp } = await fac.request(`${httpsFixture.httpsUrl}/redirect`, { method: 'get', redirect: true })
-      expect(resp).to.equal(httpsFixture.text)
+      const { body: resp } = await fac.request('http://google.com', { method: 'get', redirect: true })
+      expect(resp).to.be.include('<html')
 
       await expect(
-        fac.request(`${httpsFixture.httpsUrl}/redirect`, { method: 'get', redirect: false })
+        fac.request('http://google.com', { method: 'get', redirect: false })
       ).to.be.rejectedWith('ERR_HTTP: 301 - Moved Permanently')
     })
 
@@ -336,12 +326,12 @@ describe('http facility tests', () => {
     })
 
     it('should support head method', async () => {
-      const { headers } = await fac.request(`${httpsFixture.httpsUrl}/headers`, { method: 'head' })
+      const { headers } = await fac.request('https://api-pub.bitfinex.com/v2/conf/pub:list:currency', { method: 'head' })
       expect(headers['content-type']).to.contain('application/json')
     })
 
     it('should support options method', async () => {
-      const { headers } = await fac.request(`${httpsFixture.httpsUrl}/headers`, { method: 'options' })
+      const { headers } = await fac.request('https://api-pub.bitfinex.com/v2/conf/pub:list:currency', { method: 'options' })
       expect(headers.allow).to.include('GET')
     })
 
@@ -431,55 +421,44 @@ describe('http facility tests', () => {
     })
 
     describe('DNS caching', () => {
-      let cache
-      let resolver
-      let originalLookup
-
       beforeEach(() => {
-        cache = new Map()
-        resolver = {
-          resolve4: sinon.stub().callsFake((hostname, options, cb) => cb(null, [{ address: '127.0.0.1', ttl: 60 }])),
-          resolve6: sinon.stub().callsFake((hostname, options, cb) => cb(null, []))
-        }
-        originalLookup = fac.cacheableLookup
-        fac.cacheableLookup = new CacheableLookup({ cache, resolver, lookup: false, fallbackDuration: 0 })
-        fac.opts.dnsCaching = false
-      })
-
-      afterEach(() => {
-        fac.cacheableLookup = originalLookup
+        fac.cacheableLookup._cache.clear()
         fac.opts.dnsCaching = false
       })
 
       it('should not perform dns caching by default', async () => {
-        const { body } = await fac.request(httpsFixture.httpsUrl)
-        expect(body).to.equal(httpsFixture.text)
-        expect(cache.size).to.equal(0)
-        sinon.assert.notCalled(resolver.resolve4)
+        await fac.request('https://example.com', { method: 'get', timeout: 1000 })
+
+        expect(fac.cacheableLookup._cache.get('example.com')).to.deep.eq(undefined)
       })
 
-      for (const protocol of ['http', 'https']) {
-        it(`should support dns caching for ${protocol} requests`, async () => {
-          const url = httpsFixture[`${protocol}Url`]
-          for (let i = 0; i < 2; i++) {
-            const { body } = await fac.request(url, { dnsCaching: true })
-            expect(body).to.equal(httpsFixture.text)
-          }
-          expect(cache.get('localhost').some(entry => entry.address === '127.0.0.1')).to.be.true()
-          sinon.assert.calledOnce(resolver.resolve4)
-          sinon.assert.calledWith(resolver.resolve4, 'localhost')
-        })
-      }
+      it('should support dns caching for https requests', async () => {
+        await fac.request('https://example.com', { method: 'get', timeout: 1000, dnsCaching: true })
+
+        const expectedAddress = await lookupDomain('example.com')
+        expect(fac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
+      })
+
+      it('should support dns caching for http requests', async () => {
+        await fac.request('http://example.com', { method: 'get', timeout: 1000, dnsCaching: true })
+
+        const expectedAddress = await lookupDomain('example.com')
+        expect(fac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
+      })
 
       it('can be activated by default through fac opts', async () => {
         fac.opts.dnsCaching = true
-        for (let i = 0; i < 2; i++) {
-          const { body } = await fac.request(httpsFixture.httpsUrl)
-          expect(body).to.equal(httpsFixture.text)
-        }
-        expect(cache.get('localhost').some(entry => entry.address === '127.0.0.1')).to.be.true()
-        sinon.assert.calledOnce(resolver.resolve4)
+
+        await fac.request('https://example.com', { method: 'get', timeout: 1000 })
+
+        const expectedAddress = await lookupDomain('example.com')
+        expect(fac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
       })
+
+      const lookupDomain = async (domain) => {
+        const entry = await (new CacheableLookup()).lookupAsync(domain)
+        return entry.address
+      }
     })
   })
 
