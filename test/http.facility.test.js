@@ -1,6 +1,6 @@
-/* eslint-env mocha */
-
 'use strict'
+
+const suite = require('./suite')
 
 const chai = require('chai')
 const stream = require('stream')
@@ -16,13 +16,13 @@ const { format } = require('util')
 const { join } = require('path')
 const CacheableLookup = require('cacheable-lookup')
 
-describe('http facility tests', () => {
+suite('http facility tests', (s) => {
   let srv = null
   const app = express()
   let fac = new HttpFacility({}, { baseUrl: 'http://127.0.0.1:7070' }, { env: 'test' })
   let sockets
 
-  before((done) => {
+  s.before((done) => {
     sockets = new Set()
     fac.start((err) => {
       if (err) return done(err)
@@ -38,7 +38,7 @@ describe('http facility tests', () => {
     })
   })
 
-  after((done) => {
+  s.after((done) => {
     fac.stop((err) => {
       if (err) return done(err)
       for (const socket of sockets) socket.destroy()
@@ -46,12 +46,12 @@ describe('http facility tests', () => {
     })
   })
 
-  afterEach(() => {
+  s.afterEach(() => {
     fac.baseUrl = 'http://127.0.0.1:7070'
   })
 
-  describe('constructor tests', () => {
-    it('should set base url to empty string when missing', (done) => {
+  s.suite('constructor tests', (s) => {
+    s.check('should set base url to empty string when missing', (done) => {
       const fac = new HttpFacility({}, {}, { env: 'test' })
 
       fac.start(() => {
@@ -61,8 +61,8 @@ describe('http facility tests', () => {
     })
   })
 
-  describe('_response tests', () => {
-    it('should perform call callback when provided', (done) => {
+  s.suite('_response tests', (s) => {
+    s.check('should perform call callback when provided', (done) => {
       fac._response(null, 123, {}, (err, res) => {
         expect(err).to.be.null()
         expect(res).to.be.deep.equal({ body: 123, headers: {} })
@@ -70,26 +70,26 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should reject promise when no callback is provided and error is present', async () => {
+    s.check('should reject promise when no callback is provided and error is present', async () => {
       await expect(
         fac._response(new Error('FOO'), 123, {})
       ).to.be.rejectedWith('FOO')
     })
 
-    it('should resolve promise when no callback is provided and error is falsy', async () => {
+    s.check('should resolve promise when no callback is provided and error is falsy', async () => {
       const res = await fac._response(null, 123, {})
       expect(res).to.be.deep.equal({ body: 123, headers: {} })
     })
   })
 
-  describe('request tests', () => {
+  s.suite('request tests', (s) => {
     let body = null
 
-    afterEach(() => {
+    s.afterEach(() => {
       body = null
     })
 
-    it('should throw error on invalid url', async () => {
+    s.check('should throw error on invalid url', async () => {
       fac.baseUrl = ''
 
       await expect(
@@ -97,13 +97,13 @@ describe('http facility tests', () => {
       ).to.be.rejectedWith('Only absolute URLs are supported')
     })
 
-    it('should throw error on invalid request params', async () => {
+    s.check('should throw error on invalid request params', async () => {
       await expect(
         fac.request('http://127.0.0.1:7070', { method: 'cut' })
       ).to.be.rejectedWith('ERR_HTTP: 400 - Bad Request')
     })
 
-    it('should parse http errors as expected', async () => {
+    s.check('should parse http errors as expected', async () => {
       app.get('/foo/bar/1', (req, res) => {
         res.status(500).json({ auth: false })
       })
@@ -123,7 +123,7 @@ describe('http facility tests', () => {
       expect(httpErr.headers).to.be.an('object')
     })
 
-    it('should support paths when base url is set', async () => {
+    s.check('should support paths when base url is set', async () => {
       app.get('/foo/bar/2', (req, res) => {
         res.send('test')
       })
@@ -132,7 +132,7 @@ describe('http facility tests', () => {
       expect(resp).to.be.equal('test')
     })
 
-    it('should ignore leading slashes from url while concatenating url', async () => {
+    s.check('should ignore leading slashes from url while concatenating url', async () => {
       app.get('/foo/bar/3', (req, res) => {
         res.send('test')
       })
@@ -141,12 +141,12 @@ describe('http facility tests', () => {
       expect(resp).to.be.equal('test')
     })
 
-    it('should ignore base url when path is full url', async () => {
+    s.check('should ignore base url when path is full url', async () => {
       const { body: resp } = await fac.request('https://www.google.com', { method: 'get' })
       expect(resp).to.be.include('<html')
     })
 
-    it('should support body encodings', async () => {
+    s.check('should support body encodings', async () => {
       app.post('/foo/bar/4', (req, res) => {
         body = req.body
         res.json({ success: true })
@@ -163,7 +163,7 @@ describe('http facility tests', () => {
       expect(body).to.be.deep.equal({ data: 'test' })
     })
 
-    it('should support different encodings for request and response', async () => {
+    s.check('should support different encodings for request and response', async () => {
       app.post('/foo/bar/5', (req, res) => {
         body = req.body
         res.send('test')
@@ -183,7 +183,7 @@ describe('http facility tests', () => {
       expect(body).to.be.deep.equal({ data: 'test' })
     })
 
-    it('should return text encoding by default on response', async () => {
+    s.check('should return text encoding by default on response', async () => {
       app.post('/foo/bar/6', (req, res) => {
         body = req.body
         res.send('<test />')
@@ -202,7 +202,7 @@ describe('http facility tests', () => {
       expect(body).to.be.deep.equal({ data: 'test' })
     })
 
-    it('should return text encoding by default on request body', async () => {
+    s.check('should return text encoding by default on request body', async () => {
       const reqOpts = {
         method: 'post',
         body: JSON.stringify({ data: 'test' }),
@@ -217,7 +217,7 @@ describe('http facility tests', () => {
       expect(body).to.be.deep.equal({ data: 'test' })
     })
 
-    it('should use buffer encoding on response when response type is not supported', async () => {
+    s.check('should use buffer encoding on response when response type is not supported', async () => {
       app.post('/foo/bar/7', (req, res) => {
         body = req.body
         res.send('<test />')
@@ -238,7 +238,7 @@ describe('http facility tests', () => {
       expect(body).to.be.deep.equal({ data: 'test' })
     })
 
-    it('should support callbacks', (done) => {
+    s.check('should support callbacks', (done) => {
       fac.request('/foo/bar/3', { method: 'get' }, (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('test')
@@ -246,7 +246,7 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should handle errors in callbacks', (done) => {
+    s.check('should handle errors in callbacks', (done) => {
       fac.request('/foo/bar/1', { method: 'get' }, (err) => {
         expect(err).to.be.instanceOf(HttpError)
         expect(err.message).to.be.equal('ERR_HTTP: 500 - Internal Server Error')
@@ -258,7 +258,7 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should support callback as 2nd arg', (done) => {
+    s.check('should support callback as 2nd arg', (done) => {
       fac.request('/foo/bar/3', (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('test')
@@ -266,7 +266,7 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should support headers', async () => {
+    s.check('should support headers', async () => {
       const reqOpts = {
         method: 'post',
         body: JSON.stringify({ data: 'test' }),
@@ -278,7 +278,7 @@ describe('http facility tests', () => {
       expect(body).to.be.deep.equal({ data: 'test' })
     })
 
-    it('should support redirect', async () => {
+    s.check('should support redirect', async () => {
       const { body: resp } = await fac.request('http://google.com', { method: 'get', redirect: true })
       expect(resp).to.be.include('<html')
 
@@ -287,25 +287,29 @@ describe('http facility tests', () => {
       ).to.be.rejectedWith('ERR_HTTP: 301 - Moved Permanently')
     })
 
-    it('should support user agents', async () => {
+    s.check('should support user agents', async () => {
       const agent = new http.Agent({ keepAlive: false })
       const { body: resp } = await fac.request('/foo/bar/3', { method: 'get', agent })
       expect(resp).to.be.equal('test')
     })
 
-    it('should support timeout', async () => {
+    s.check('should support timeout', async () => {
+      app.get('/foo/bar/timeout', (req, res) => {
+        setTimeout(() => res.send('test'), 100)
+      })
+
       await expect(
-        fac.request('/foo/bar/3', { method: 'get', timeout: 1 })
-      ).to.be.rejectedWith('network timeout at: http://127.0.0.1:7070/foo/bar/3')
+        fac.request('/foo/bar/timeout', { method: 'get', timeout: 10 })
+      ).to.be.rejectedWith('network timeout at: http://127.0.0.1:7070/foo/bar/timeout')
     })
 
-    it('should throw error when encoding is wrong', async () => {
+    s.check('should throw error when encoding is wrong', async () => {
       await expect(
         fac.request('/foo/bar/3', { method: 'get', encoding: 'json' })
       ).to.be.rejectedWith('invalid json response body')
     })
 
-    it('should support debugging', async () => {
+    s.check('should support debugging', async () => {
       let log = null
       const logStub = sinon.stub(console, 'error').callsFake((...params) => {
         log = format(...params)
@@ -325,17 +329,17 @@ describe('http facility tests', () => {
       fac.debug = false
     })
 
-    it('should support head method', async () => {
+    s.check('should support head method', async () => {
       const { headers } = await fac.request('https://api-pub.bitfinex.com/v2/conf/pub:list:currency', { method: 'head' })
       expect(headers['content-type']).to.contain('application/json')
     })
 
-    it('should support options method', async () => {
+    s.check('should support options method', async () => {
       const { headers } = await fac.request('https://api-pub.bitfinex.com/v2/conf/pub:list:currency', { method: 'options' })
       expect(headers.allow).to.include('GET')
     })
 
-    it('should support streams', async () => {
+    s.check('should support streams', async () => {
       const readfile = join(__dirname, 'bfx.png')
       const writefile = join(__dirname, 'out.png')
 
@@ -357,7 +361,7 @@ describe('http facility tests', () => {
       expect(fs.existsSync(writefile)).to.be.true()
     })
 
-    it('should support qs params', async () => {
+    s.check('should support qs params', async () => {
       app.get('/foo/bar/9', (req, res) => {
         res.json(req.query)
       })
@@ -383,7 +387,7 @@ describe('http facility tests', () => {
       expect(resp.body).to.be.deep.equal({ a: ['2', '1'], b: 'c', d: 'e' })
     })
 
-    it('should support basic authorization', async () => {
+    s.check('should support basic authorization', async () => {
       app.get('/foo/bar/basic-auth', (req, res) => {
         res.send(req.headers.authorization)
       })
@@ -398,7 +402,7 @@ describe('http facility tests', () => {
       expect(resp.body).to.eq(`Basic ${Buffer.from('user:pass').toString('base64')}`)
     })
 
-    it('should not send basic authorization', async () => {
+    s.check('should not send basic authorization', async () => {
       app.get('/foo/bar/no-basic-auth', (req, res) => {
         res.send(req.headers.authorization)
       })
@@ -407,7 +411,7 @@ describe('http facility tests', () => {
       expect(resp.body).to.eq('')
     })
 
-    it('should support abort signals', async () => {
+    s.check('should support abort signals', async () => {
       app.get('/foo/bar/signal', () => { })
 
       const abortController = new AbortController()
@@ -420,33 +424,33 @@ describe('http facility tests', () => {
       ).to.be.rejectedWith(/aborted/)
     })
 
-    describe('DNS caching', () => {
-      beforeEach(() => {
+    s.suite('DNS caching', (s) => {
+      s.beforeEach(() => {
         fac.cacheableLookup._cache.clear()
         fac.opts.dnsCaching = false
       })
 
-      it('should not perform dns caching by default', async () => {
+      s.check('should not perform dns caching by default', async () => {
         await fac.request('https://example.com', { method: 'get', timeout: 1000 })
 
         expect(fac.cacheableLookup._cache.get('example.com')).to.deep.eq(undefined)
       })
 
-      it('should support dns caching for https requests', async () => {
+      s.check('should support dns caching for https requests', async () => {
         await fac.request('https://example.com', { method: 'get', timeout: 1000, dnsCaching: true })
 
         const expectedAddress = await lookupDomain('example.com')
         expect(fac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
       })
 
-      it('should support dns caching for http requests', async () => {
+      s.check('should support dns caching for http requests', async () => {
         await fac.request('http://example.com', { method: 'get', timeout: 1000, dnsCaching: true })
 
         const expectedAddress = await lookupDomain('example.com')
         expect(fac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress)).to.be.true()
       })
 
-      it('can be activated by default through fac opts', async () => {
+      s.check('can be activated by default through fac opts', async () => {
         fac.opts.dnsCaching = true
 
         await fac.request('https://example.com', { method: 'get', timeout: 1000 })
@@ -462,10 +466,10 @@ describe('http facility tests', () => {
     })
   })
 
-  describe('abortTimeout tests', () => {
+  s.suite('abortTimeout tests', (s) => {
     let abortFac = null
 
-    before((done) => {
+    s.before((done) => {
       app.get('/foo/bar/slow', (req, res) => {
         const delay = parseInt(req.query.delay) || 3000
         setTimeout(() => res.send('slow response'), delay)
@@ -475,41 +479,41 @@ describe('http facility tests', () => {
       abortFac.start(done)
     })
 
-    after((done) => {
+    s.after((done) => {
       abortFac.stop(done)
     })
 
-    it('should default abortTimeout to 0 when not configured', () => {
+    s.check('should default abortTimeout to 0 when not configured', () => {
       expect(fac.abortTimeout).to.be.equal(0)
     })
 
-    it('should set abortTimeout from opts', () => {
+    s.check('should set abortTimeout from opts', () => {
       expect(abortFac.abortTimeout).to.be.equal(500)
     })
 
-    it('should abort slow requests with facility-level abortTimeout', async () => {
+    s.check('should abort slow requests with facility-level abortTimeout', async () => {
       await expect(
         abortFac.request('/foo/bar/slow?delay=3000', { timeout: 30000 })
       ).to.be.rejectedWith(/aborted/)
     })
 
-    it('should succeed when request completes before abortTimeout', async () => {
+    s.check('should succeed when request completes before abortTimeout', async () => {
       const { body: resp } = await abortFac.request('/foo/bar/slow?delay=50', { timeout: 30000 })
       expect(resp).to.be.equal('slow response')
     })
 
-    it('should allow per-request abortTimeout to override facility-level', async () => {
+    s.check('should allow per-request abortTimeout to override facility-level', async () => {
       const { body: resp } = await abortFac.request('/foo/bar/slow?delay=200', { abortTimeout: 2000, timeout: 30000 })
       expect(resp).to.be.equal('slow response')
     })
 
-    it('should abort with per-request abortTimeout on fac without default', async () => {
+    s.check('should abort with per-request abortTimeout on fac without default', async () => {
       await expect(
         fac.request('/foo/bar/slow?delay=3000', { abortTimeout: 200, timeout: 30000 })
       ).to.be.rejectedWith(/aborted/)
     })
 
-    it('should not create auto-controller when caller provides signal', async () => {
+    s.check('should not create auto-controller when caller provides signal', async () => {
       const controller = new AbortController()
       setTimeout(() => controller.abort(), 100)
 
@@ -518,7 +522,7 @@ describe('http facility tests', () => {
       ).to.be.rejectedWith(/aborted/)
     })
 
-    it('should work with callback pattern', async () => {
+    s.check('should work with callback pattern', async () => {
       const result = await new Promise((resolve) => {
         abortFac.request('/foo/bar/slow?delay=3000', { timeout: 30000 }, (err) => {
           resolve(err)
@@ -528,26 +532,26 @@ describe('http facility tests', () => {
       expect(result.name).to.be.equal('AbortError')
     })
 
-    it('should work through convenience methods', async () => {
+    s.check('should work through convenience methods', async () => {
       await expect(
         abortFac.get('/foo/bar/slow?delay=3000', { timeout: 30000 })
       ).to.be.rejectedWith(/aborted/)
     })
   })
 
-  describe('_methodRequest tests', () => {
-    before(() => {
+  s.suite('_methodRequest tests', (s) => {
+    s.before(() => {
       app.get('/method_request_test', (req, res) => {
         res.send('foo')
       })
     })
 
-    it('should perform requests as expected', async () => {
+    s.check('should perform requests as expected', async () => {
       const { body: resp } = await fac._methodRequest('/method_request_test', 'get', { method: 'post' })
       expect(resp).to.be.equal('foo')
     })
 
-    it('should support callbacks', (done) => {
+    s.check('should support callbacks', (done) => {
       fac._methodRequest('/method_request_test', 'get', { method: 'post' }, (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('foo')
@@ -555,7 +559,7 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should support callback as 3nd arg', (done) => {
+    s.check('should support callback as 3nd arg', (done) => {
       fac._methodRequest('/method_request_test', 'get', (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('foo')
@@ -563,25 +567,25 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should work without optional args', async () => {
+    s.check('should work without optional args', async () => {
       const { body: resp } = await fac._methodRequest('/method_request_test', 'get')
       expect(resp).to.be.equal('foo')
     })
   })
 
-  describe('get tests', () => {
-    before(() => {
+  s.suite('get tests', (s) => {
+    s.before(() => {
       app.get('/get_test', (req, res) => {
         res.send('test')
       })
     })
 
-    it('should perform requests as expected', async () => {
+    s.check('should perform requests as expected', async () => {
       const { body: resp } = await fac.get('/get_test', { method: 'post' })
       expect(resp).to.be.equal('test')
     })
 
-    it('should support callbacks', (done) => {
+    s.check('should support callbacks', (done) => {
       fac.get('/get_test', { method: 'post' }, (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('test')
@@ -589,7 +593,7 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should support callback as 2nd arg', (done) => {
+    s.check('should support callback as 2nd arg', (done) => {
       fac.get('/get_test', (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('test')
@@ -597,13 +601,13 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should work without optional args', async () => {
+    s.check('should work without optional args', async () => {
       const { body: resp } = await fac.get('/get_test')
       expect(resp).to.be.equal('test')
     })
   })
 
-  describe('post tests', () => {
+  s.suite('post tests', (s) => {
     let body = null
     const reqOpts = {
       method: 'get',
@@ -611,24 +615,24 @@ describe('http facility tests', () => {
       headers: { 'content-type': 'application/x-www-form-urlencoded' }
     }
 
-    before(() => {
+    s.before(() => {
       app.post('/post_test', express.urlencoded({ extended: true }), (req, res) => {
         body = req.body
         res.send('bar')
       })
     })
 
-    afterEach(() => {
+    s.afterEach(() => {
       body = null
     })
 
-    it('should perform requests as expected', async () => {
+    s.check('should perform requests as expected', async () => {
       const { body: resp } = await fac.post('/post_test', reqOpts)
       expect(resp).to.be.equal('bar')
       expect(body).to.be.deep.equal({ foo: 'bar' })
     })
 
-    it('should support callbacks', (done) => {
+    s.check('should support callbacks', (done) => {
       fac.post('/post_test', reqOpts, (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('bar')
@@ -637,7 +641,7 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should support callback as 2nd arg', (done) => {
+    s.check('should support callback as 2nd arg', (done) => {
       fac.post('/post_test', (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('bar')
@@ -646,14 +650,14 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should work without optional args', async () => {
+    s.check('should work without optional args', async () => {
       const { body: resp } = await fac.post('/post_test')
       expect(resp).to.be.equal('bar')
       expect(body).to.be.deep.equal({})
     })
   })
 
-  describe('put tests', () => {
+  s.suite('put tests', (s) => {
     let body = null
     const reqOpts = {
       method: 'get',
@@ -661,24 +665,24 @@ describe('http facility tests', () => {
       headers: { 'content-type': 'application/x-www-form-urlencoded' }
     }
 
-    before(() => {
+    s.before(() => {
       app.put('/put_test', express.urlencoded({ extended: true }), (req, res) => {
         body = req.body
         res.send('bar')
       })
     })
 
-    afterEach(() => {
+    s.afterEach(() => {
       body = null
     })
 
-    it('should perform requests as expected', async () => {
+    s.check('should perform requests as expected', async () => {
       const { body: resp } = await fac.put('/put_test', reqOpts)
       expect(resp).to.be.equal('bar')
       expect(body).to.be.deep.equal({ foo: 'bar' })
     })
 
-    it('should support callbacks', (done) => {
+    s.check('should support callbacks', (done) => {
       fac.put('/put_test', reqOpts, (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('bar')
@@ -687,7 +691,7 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should support callback as 2nd arg', (done) => {
+    s.check('should support callback as 2nd arg', (done) => {
       fac.put('/put_test', (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('bar')
@@ -696,14 +700,14 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should work without optional args', async () => {
+    s.check('should work without optional args', async () => {
       const { body: resp } = await fac.put('/put_test')
       expect(resp).to.be.equal('bar')
       expect(body).to.be.deep.equal({})
     })
   })
 
-  describe('patch tests', () => {
+  s.suite('patch tests', (s) => {
     let body = null
     const reqOpts = {
       method: 'get',
@@ -711,24 +715,24 @@ describe('http facility tests', () => {
       headers: { 'content-type': 'application/x-www-form-urlencoded' }
     }
 
-    before(() => {
+    s.before(() => {
       app.patch('/patch_test', express.urlencoded({ extended: true }), (req, res) => {
         body = req.body
         res.send('bar')
       })
     })
 
-    afterEach(() => {
+    s.afterEach(() => {
       body = null
     })
 
-    it('should perform requests as expected', async () => {
+    s.check('should perform requests as expected', async () => {
       const { body: resp } = await fac.patch('/patch_test', reqOpts)
       expect(resp).to.be.equal('bar')
       expect(body).to.be.deep.equal({ foo: 'bar' })
     })
 
-    it('should support callbacks', (done) => {
+    s.check('should support callbacks', (done) => {
       fac.patch('/patch_test', reqOpts, (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('bar')
@@ -737,7 +741,7 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should support callback as 2nd arg', (done) => {
+    s.check('should support callback as 2nd arg', (done) => {
       fac.patch('/patch_test', (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('bar')
@@ -746,14 +750,14 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should work without optional args', async () => {
+    s.check('should work without optional args', async () => {
       const { body: resp } = await fac.patch('/patch_test')
       expect(resp).to.be.equal('bar')
       expect(body).to.be.deep.equal({})
     })
   })
 
-  describe('delete tests', () => {
+  s.suite('delete tests', (s) => {
     let body = null
     const reqOpts = {
       method: 'get',
@@ -761,24 +765,24 @@ describe('http facility tests', () => {
       headers: { 'content-type': 'application/x-www-form-urlencoded' }
     }
 
-    before(() => {
+    s.before(() => {
       app.delete('/delete_test', express.urlencoded({ extended: true }), (req, res) => {
         body = req.body
         res.send('bar')
       })
     })
 
-    afterEach(() => {
+    s.afterEach(() => {
       body = null
     })
 
-    it('should perform requests as expected', async () => {
+    s.check('should perform requests as expected', async () => {
       const { body: resp } = await fac.delete('/delete_test', reqOpts)
       expect(resp).to.be.equal('bar')
       expect(body).to.be.deep.equal({ foo: 'bar' })
     })
 
-    it('should support callbacks', (done) => {
+    s.check('should support callbacks', (done) => {
       fac.delete('/delete_test', reqOpts, (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('bar')
@@ -787,7 +791,7 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should support callback as 2nd arg', (done) => {
+    s.check('should support callback as 2nd arg', (done) => {
       fac.delete('/delete_test', (err, res) => {
         expect(err).to.be.null()
         expect(res.body).to.be.equal('bar')
@@ -796,20 +800,20 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should work without optional args', async () => {
+    s.check('should work without optional args', async () => {
       const { body: resp } = await fac.delete('/delete_test')
       expect(resp).to.be.equal('bar')
       expect(body).to.be.deep.equal({})
     })
   })
 
-  describe('head tests', () => {
-    it('should perform requests as expected', async () => {
+  s.suite('head tests', (s) => {
+    s.check('should perform requests as expected', async () => {
       const { headers } = await fac.head('/get_test', { headers: { foo: 'bar' } })
       expect(headers['content-type']).to.be.equal('text/html; charset=utf-8')
     })
 
-    it('should support callbacks', (done) => {
+    s.check('should support callbacks', (done) => {
       fac.head('/get_test', { headers: { foo: 'bar' } }, (err, res) => {
         expect(err).to.be.null()
         expect(res.headers['content-type']).to.be.equal('text/html; charset=utf-8')
@@ -817,7 +821,7 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should support callback as 2nd arg', (done) => {
+    s.check('should support callback as 2nd arg', (done) => {
       fac.head('/get_test', (err, res) => {
         expect(err).to.be.null()
         expect(res.headers['content-type']).to.be.equal('text/html; charset=utf-8')
@@ -825,19 +829,19 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should work without optional args', async () => {
+    s.check('should work without optional args', async () => {
       const { headers } = await fac.head('/get_test')
       expect(headers['content-type']).to.be.equal('text/html; charset=utf-8')
     })
   })
 
-  describe('options tests', () => {
-    it('should perform requests as expected', async () => {
+  s.suite('options tests', (s) => {
+    s.check('should perform requests as expected', async () => {
       const { headers } = await fac.options('/get_test', { headers: { foo: 'bar' } })
       expect(headers.allow).to.be.equal('GET,HEAD')
     })
 
-    it('should support callbacks', (done) => {
+    s.check('should support callbacks', (done) => {
       fac.options('/get_test', { headers: { foo: 'bar' } }, (err, res) => {
         expect(err).to.be.null()
         expect(res.headers.allow).to.be.equal('GET,HEAD')
@@ -845,7 +849,7 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should support callback as 2nd arg', (done) => {
+    s.check('should support callback as 2nd arg', (done) => {
       fac.options('/get_test', (err, res) => {
         expect(err).to.be.null()
         expect(res.headers.allow).to.be.equal('GET,HEAD')
@@ -853,7 +857,7 @@ describe('http facility tests', () => {
       })
     })
 
-    it('should work without optional args', async () => {
+    s.check('should work without optional args', async () => {
       const { headers } = await fac.options('/get_test')
       expect(headers.allow).to.be.equal('GET,HEAD')
     })

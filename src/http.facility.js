@@ -1,6 +1,6 @@
 'use strict'
 
-const _ = require('lodash')
+const { isFunction, pick, mapValues } = require('@bitfinex/lib-js-util-base')
 const async = require('async')
 const Base = require('@bitfinex/bfx-facs-base')
 const fetch = require('node-fetch')
@@ -44,14 +44,14 @@ class HttpFacility extends Base {
 
   async request (path, opts = {}, cb = null) {
     try {
-      if (_.isFunction(opts)) {
+      if (isFunction(opts)) {
         cb = opts
         opts = {}
       }
 
       let url = path.includes('://') ? path : `${this.baseUrl}/${path.replace(/^\//, '')}`
 
-      const reqOpts = _.pick(opts, ['body', 'headers', 'method', 'redirect', 'agent', 'compress', 'timeout', 'qs', 'signal'])
+      const reqOpts = { ...pick(opts, ['body', 'headers', 'method', 'redirect', 'agent', 'compress', 'timeout', 'qs', 'signal']) }
 
       const abortTimeout = opts.abortTimeout || this.abortTimeout
       let abortTimer = null
@@ -113,9 +113,11 @@ class HttpFacility extends Base {
       try {
         const resp = await fetch(url, reqOpts)
         let respBody = null
-        const headers = _.mapValues(resp.headers.raw(), (v) => {
-          return v.length === 1 ? v[0] : v
-        })
+        const headers = {
+          ...mapValues(resp.headers.raw(), (v) => {
+            return v.length === 1 ? v[0] : v
+          })
+        }
 
         if (!resp.ok) {
           httpErr = new HttpError(
@@ -188,7 +190,7 @@ class HttpFacility extends Base {
   }
 
   async _methodRequest (path, method, opts = {}, cb = null) {
-    if (_.isFunction(opts)) {
+    if (isFunction(opts)) {
       cb = opts
       opts = {}
     }
@@ -198,7 +200,7 @@ class HttpFacility extends Base {
 
   _response (err, respBody, headers, cb) {
     const res = { body: respBody, headers }
-    if (_.isFunction(cb)) return cb(err, res)
+    if (isFunction(cb)) return cb(err, res)
 
     if (err) return Promise.reject(err)
     return Promise.resolve(res)
