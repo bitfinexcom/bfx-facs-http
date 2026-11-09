@@ -1,11 +1,11 @@
 'use strict'
 
-const suite = require('./suite')
+const { test } = require('brittle')
 
 const { format } = require('util')
 const { HttpError } = require('../')
 
-suite('http facility tests', (s) => {
+test('http error tests', async (t) => {
   const message = 'ERR_HTTP: 500 - Internal Server Error'
   const status = 500
   const statusText = 'Internal Server Error'
@@ -13,19 +13,15 @@ suite('http facility tests', (s) => {
   const response = { foo: 'bar' }
 
   const logs = []
-  let originalError
-  s.before(() => {
-    originalError = console.error
-    console.error = (...args) => {
-      logs.push(format(...args))
-    }
-  })
-
-  s.after(() => {
+  const originalError = console.error
+  console.error = (...args) => {
+    logs.push(format(...args))
+  }
+  t.teardown(() => {
     console.error = originalError
-  })
+  }, { force: true })
 
-  s.check('constructor should work without optional params', (t) => {
+  await t.test('constructor should work without optional params', (t) => {
     const err = new HttpError(message, status, statusText)
     t.ok(err instanceof Error)
     t.is(err.status, status)
@@ -34,7 +30,7 @@ suite('http facility tests', (s) => {
     t.is(err.response, null)
   })
 
-  s.check('constructor should set optional arguments when provided', (t) => {
+  await t.test('constructor should set optional arguments when provided', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
     t.ok(err instanceof Error)
     t.is(err.status, status)
@@ -43,19 +39,19 @@ suite('http facility tests', (s) => {
     t.alike(err.response, response)
   })
 
-  s.check('toString should print only message as default Error class', (t) => {
+  await t.test('toString should print only message as default Error class', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
     t.is(err.toString(), `HttpError: ${message}`)
   })
 
-  s.check('toJSON should return object containing all http info', (t) => {
+  await t.test('toJSON should return object containing all http info', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
     t.alike(err.toJSON(), {
       name: 'HttpError', message, status, statusText, headers, response
     })
   })
 
-  s.check('error log should print all http related details', (t) => {
+  await t.test('error log should print all http related details', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
     console.error(err)
     const log = logs.at(-1)
@@ -67,7 +63,7 @@ suite('http facility tests', (s) => {
     t.is(log.includes(format(response)), true)
   })
 
-  s.check('stack trace should print all http related details', (t) => {
+  await t.test('stack trace should print all http related details', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
 
     t.is(err.stack.includes(`HttpError: ${message}`), true)
@@ -77,7 +73,7 @@ suite('http facility tests', (s) => {
     t.is(err.stack.includes(format(response)), true)
   })
 
-  s.check('stack trace should be rebuild when response is set later', (t) => {
+  await t.test('stack trace should be rebuild when response is set later', (t) => {
     const err = new HttpError(message, status, statusText, headers)
 
     t.is(err.stack.includes(`HttpError: ${message}`), true)
@@ -90,7 +86,7 @@ suite('http facility tests', (s) => {
     t.is(err.stack.includes(format(response)), true)
   })
 
-  s.check('stack trace should not duplicate multi-line headers when response is set later', (t) => {
+  await t.test('stack trace should not duplicate multi-line headers when response is set later', (t) => {
     const multiLineHeaders = {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store',
