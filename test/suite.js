@@ -6,6 +6,10 @@ const run = (fn) => fn.length
   ? new Promise((resolve, reject) => fn((err) => err ? reject(err) : resolve()))
   : Promise.resolve().then(fn)
 
+const runCheck = (fn, t) => fn.length === 2
+  ? new Promise((resolve, reject) => fn(t, (err) => err ? reject(err) : resolve()))
+  : Promise.resolve().then(() => fn(t))
+
 const suite = (name, define, prefix = '', parents = []) => {
   const title = prefix ? `${prefix} ${name}` : name
   const hooks = {
@@ -27,7 +31,7 @@ const suite = (name, define, prefix = '', parents = []) => {
         for (const current of lineage) {
           for (const setup of current.beforeEach) await run(setup)
         }
-        await run(fn)
+        await runCheck(fn, t)
         t.pass()
       } finally {
         for (let i = lineage.length - 1; i >= 0; i--) {
