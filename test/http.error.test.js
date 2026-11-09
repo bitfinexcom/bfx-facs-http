@@ -2,9 +2,7 @@
 
 const suite = require('./suite')
 
-const chai = require('chai')
-const sinon = require('sinon')
-const { expect } = chai.use(require('dirty-chai'))
+const assert = require('node:assert/strict')
 const { format } = require('util')
 const { HttpError } = require('../')
 
@@ -16,41 +14,44 @@ suite('http facility tests', (s) => {
   const response = { foo: 'bar' }
 
   const logs = []
-  const errStub = sinon.stub(console, 'error').callsFake((...args) => {
-    const log = format(...args)
-    logs.push(log)
+  let originalError
+  s.before(() => {
+    originalError = console.error
+    console.error = (...args) => {
+      logs.push(format(...args))
+    }
   })
 
   s.after(() => {
-    errStub.restore()
+    console.error = originalError
   })
 
   s.check('constructor should work without optional params', () => {
     const err = new HttpError(message, status, statusText)
-    expect(err).to.be.instanceOf(Error)
-    expect(err.status).to.be.equal(status)
-    expect(err.statusText).to.be.equal(statusText)
-    expect(err.headers).to.be.deep.equal({})
-    expect(err.response).to.be.null()
+    assert.ok(err instanceof Error)
+    assert.strictEqual(err.status, status)
+    assert.strictEqual(err.statusText, statusText)
+    assert.deepStrictEqual(err.headers, {})
+    assert.strictEqual(err.response, null)
   })
 
   s.check('constructor should set optional arguments when provided', () => {
     const err = new HttpError(message, status, statusText, headers, response)
-    expect(err).to.be.instanceOf(Error)
-    expect(err.status).to.be.equal(status)
-    expect(err.statusText).to.be.equal(statusText)
-    expect(err.headers).to.be.deep.equal(headers)
-    expect(err.response).to.be.deep.equal(response)
+    assert.ok(err instanceof Error)
+    assert.strictEqual(err.status, status)
+    assert.strictEqual(err.statusText, statusText)
+    assert.deepStrictEqual(err.headers, headers)
+    assert.deepStrictEqual(err.response, response)
   })
 
   s.check('toString should print only message as default Error class', () => {
     const err = new HttpError(message, status, statusText, headers, response)
-    expect(err.toString()).to.be.equal(`HttpError: ${message}`)
+    assert.strictEqual(err.toString(), `HttpError: ${message}`)
   })
 
   s.check('toJSON should return object containing all http info', () => {
     const err = new HttpError(message, status, statusText, headers, response)
-    expect(err.toJSON()).to.be.deep.equal({
+    assert.deepStrictEqual(err.toJSON(), {
       name: 'HttpError', message, status, statusText, headers, response
     })
   })
@@ -60,34 +61,34 @@ suite('http facility tests', (s) => {
     console.error(err)
     const log = logs.at(-1)
 
-    expect(log.includes(`HttpError: ${message}`)).to.be.true()
-    expect(log.includes(status)).to.be.true()
-    expect(log.includes(statusText)).to.be.true()
-    expect(log.includes(format(headers))).to.be.true()
-    expect(log.includes(format(response))).to.be.true()
+    assert.strictEqual(log.includes(`HttpError: ${message}`), true)
+    assert.strictEqual(log.includes(status), true)
+    assert.strictEqual(log.includes(statusText), true)
+    assert.strictEqual(log.includes(format(headers)), true)
+    assert.strictEqual(log.includes(format(response)), true)
   })
 
   s.check('stack trace should print all http related details', () => {
     const err = new HttpError(message, status, statusText, headers, response)
 
-    expect(err.stack.includes(`HttpError: ${message}`)).to.be.true()
-    expect(err.stack.includes(status)).to.be.true()
-    expect(err.stack.includes(statusText)).to.be.true()
-    expect(err.stack.includes(format(headers))).to.be.true()
-    expect(err.stack.includes(format(response))).to.be.true()
+    assert.strictEqual(err.stack.includes(`HttpError: ${message}`), true)
+    assert.strictEqual(err.stack.includes(status), true)
+    assert.strictEqual(err.stack.includes(statusText), true)
+    assert.strictEqual(err.stack.includes(format(headers)), true)
+    assert.strictEqual(err.stack.includes(format(response)), true)
   })
 
   s.check('stack trace should be rebuild when response is set later', () => {
     const err = new HttpError(message, status, statusText, headers)
 
-    expect(err.stack.includes(`HttpError: ${message}`)).to.be.true()
-    expect(err.stack.includes(status)).to.be.true()
-    expect(err.stack.includes(statusText)).to.be.true()
-    expect(err.stack.includes(format(headers))).to.be.true()
-    expect(err.stack.includes(format(response))).to.be.false()
+    assert.strictEqual(err.stack.includes(`HttpError: ${message}`), true)
+    assert.strictEqual(err.stack.includes(status), true)
+    assert.strictEqual(err.stack.includes(statusText), true)
+    assert.strictEqual(err.stack.includes(format(headers)), true)
+    assert.strictEqual(err.stack.includes(format(response)), false)
 
     err.setResponse(response)
-    expect(err.stack.includes(format(response))).to.be.true()
+    assert.strictEqual(err.stack.includes(format(response)), true)
   })
 
   s.check('stack trace should not duplicate multi-line headers when response is set later', () => {
@@ -104,6 +105,6 @@ suite('http facility tests', (s) => {
     err.setResponse(response)
 
     const headerLineCount = err.stack.split("'cache-control': 'no-store'").length - 1
-    expect(headerLineCount).to.be.equal(1)
+    assert.strictEqual(headerLineCount, 1)
   })
 })
