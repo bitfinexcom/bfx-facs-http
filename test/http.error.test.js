@@ -5,7 +5,7 @@ const { test } = require('brittle')
 const { format } = require('util')
 const { HttpError } = require('../')
 
-test('http error tests', async (t) => {
+test('http error tests', (t) => {
   const message = 'ERR_HTTP: 500 - Internal Server Error'
   const status = 500
   const statusText = 'Internal Server Error'
