@@ -21,7 +21,7 @@ test('http error tests', (t) => {
     console.error = originalError
   }, { force: true })
 
-  await t.test('constructor should work without optional params', (t) => {
+ t.test('constructor should work without optional params', (t) => {
     const err = new HttpError(message, status, statusText)
     t.ok(err instanceof Error)
     t.is(err.status, status)
