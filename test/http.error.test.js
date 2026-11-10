@@ -1,15 +1,11 @@
-/* eslint-env mocha */
-
 'use strict'
 
-const _last = require('lodash/last')
-const chai = require('chai')
-const sinon = require('sinon')
-const { expect } = chai.use(require('dirty-chai'))
+const { test } = require('brittle')
+
 const { format } = require('util')
 const { HttpError } = require('../')
 
-describe('http facility tests', () => {
+test('http error tests', (t) => {
   const message = 'ERR_HTTP: 500 - Internal Server Error'
   const status = 500
   const statusText = 'Internal Server Error'
@@ -17,81 +13,80 @@ describe('http facility tests', () => {
   const response = { foo: 'bar' }
 
   const logs = []
-  const errStub = sinon.stub(console, 'error').callsFake((...args) => {
-    const log = format(...args)
-    logs.push(log)
-  })
+  const originalError = console.error
+  console.error = (...args) => {
+    logs.push(format(...args))
+  }
+  t.teardown(() => {
+    console.error = originalError
+  }, { force: true })
 
-  after(() => {
-    errStub.restore()
-  })
-
-  it('constructor should work without optional params', () => {
+  t.test('constructor should work without optional params', (t) => {
     const err = new HttpError(message, status, statusText)
-    expect(err).to.be.instanceOf(Error)
-    expect(err.status).to.be.equal(status)
-    expect(err.statusText).to.be.equal(statusText)
-    expect(err.headers).to.be.deep.equal({})
-    expect(err.response).to.be.null()
+    t.ok(err instanceof Error)
+    t.is(err.status, status)
+    t.is(err.statusText, statusText)
+    t.alike(err.headers, {})
+    t.is(err.response, null)
   })
 
-  it('constructor should set optional arguments when provided', () => {
+  t.test('constructor should set optional arguments when provided', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
-    expect(err).to.be.instanceOf(Error)
-    expect(err.status).to.be.equal(status)
-    expect(err.statusText).to.be.equal(statusText)
-    expect(err.headers).to.be.deep.equal(headers)
-    expect(err.response).to.be.deep.equal(response)
+    t.ok(err instanceof Error)
+    t.is(err.status, status)
+    t.is(err.statusText, statusText)
+    t.alike(err.headers, headers)
+    t.alike(err.response, response)
   })
 
-  it('toString should print only message as default Error class', () => {
+  t.test('toString should print only message as default Error class', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
-    expect(err.toString()).to.be.equal(`HttpError: ${message}`)
+    t.is(err.toString(), `HttpError: ${message}`)
   })
 
-  it('toJSON should return object containing all http info', () => {
+  t.test('toJSON should return object containing all http info', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
-    expect(err.toJSON()).to.be.deep.equal({
+    t.alike(err.toJSON(), {
       name: 'HttpError', message, status, statusText, headers, response
     })
   })
 
-  it('error log should print all http related details', () => {
+  t.test('error log should print all http related details', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
     console.error(err)
-    const log = _last(logs)
+    const log = logs.at(-1)
 
-    expect(log.includes(`HttpError: ${message}`)).to.be.true()
-    expect(log.includes(status)).to.be.true()
-    expect(log.includes(statusText)).to.be.true()
-    expect(log.includes(format(headers))).to.be.true()
-    expect(log.includes(format(response))).to.be.true()
+    t.is(log.includes(`HttpError: ${message}`), true)
+    t.is(log.includes(status), true)
+    t.is(log.includes(statusText), true)
+    t.is(log.includes(format(headers)), true)
+    t.is(log.includes(format(response)), true)
   })
 
-  it('stack trace should print all http related details', () => {
+  t.test('stack trace should print all http related details', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
 
-    expect(err.stack.includes(`HttpError: ${message}`)).to.be.true()
-    expect(err.stack.includes(status)).to.be.true()
-    expect(err.stack.includes(statusText)).to.be.true()
-    expect(err.stack.includes(format(headers))).to.be.true()
-    expect(err.stack.includes(format(response))).to.be.true()
+    t.is(err.stack.includes(`HttpError: ${message}`), true)
+    t.is(err.stack.includes(status), true)
+    t.is(err.stack.includes(statusText), true)
+    t.is(err.stack.includes(format(headers)), true)
+    t.is(err.stack.includes(format(response)), true)
   })
 
-  it('stack trace should be rebuild when response is set later', () => {
+  t.test('stack trace should be rebuild when response is set later', (t) => {
     const err = new HttpError(message, status, statusText, headers)
 
-    expect(err.stack.includes(`HttpError: ${message}`)).to.be.true()
-    expect(err.stack.includes(status)).to.be.true()
-    expect(err.stack.includes(statusText)).to.be.true()
-    expect(err.stack.includes(format(headers))).to.be.true()
-    expect(err.stack.includes(format(response))).to.be.false()
+    t.is(err.stack.includes(`HttpError: ${message}`), true)
+    t.is(err.stack.includes(status), true)
+    t.is(err.stack.includes(statusText), true)
+    t.is(err.stack.includes(format(headers)), true)
+    t.is(err.stack.includes(format(response)), false)
 
     err.setResponse(response)
-    expect(err.stack.includes(format(response))).to.be.true()
+    t.is(err.stack.includes(format(response)), true)
   })
 
-  it('stack trace should not duplicate multi-line headers when response is set later', () => {
+  t.test('stack trace should not duplicate multi-line headers when response is set later', (t) => {
     const multiLineHeaders = {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store',
@@ -105,6 +100,6 @@ describe('http facility tests', () => {
     err.setResponse(response)
 
     const headerLineCount = err.stack.split("'cache-control': 'no-store'").length - 1
-    expect(headerLineCount).to.be.equal(1)
+    t.is(headerLineCount, 1)
   })
 })
