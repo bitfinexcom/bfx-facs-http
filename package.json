@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "lint": "bfx-lint-js .",
-    "format": "bfx-lint-js . --fix",
+    "lint:fix": "bfx-lint-js . --fix",
     "test": "npm run lint && npm run unit",
     "unit": "NODE_ENV=test brittle-node 'test/*.test.js'"
   },
