@@ -21,7 +21,7 @@ test('http error tests', (t) => {
     console.error = originalError
   }, { force: true })
 
- t.test('constructor should work without optional params', (t) => {
+  t.test('constructor should work without optional params', (t) => {
     const err = new HttpError(message, status, statusText)
     t.ok(err instanceof Error)
     t.is(err.status, status)
@@ -30,7 +30,7 @@ test('http error tests', (t) => {
     t.is(err.response, null)
   })
 
-  await t.test('constructor should set optional arguments when provided', (t) => {
+  t.test('constructor should set optional arguments when provided', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
     t.ok(err instanceof Error)
     t.is(err.status, status)
@@ -39,19 +39,19 @@ test('http error tests', (t) => {
     t.alike(err.response, response)
   })
 
-  await t.test('toString should print only message as default Error class', (t) => {
+  t.test('toString should print only message as default Error class', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
     t.is(err.toString(), `HttpError: ${message}`)
   })
 
-  await t.test('toJSON should return object containing all http info', (t) => {
+  t.test('toJSON should return object containing all http info', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
     t.alike(err.toJSON(), {
       name: 'HttpError', message, status, statusText, headers, response
     })
   })
 
-  await t.test('error log should print all http related details', (t) => {
+  t.test('error log should print all http related details', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
     console.error(err)
     const log = logs.at(-1)
@@ -63,7 +63,7 @@ test('http error tests', (t) => {
     t.is(log.includes(format(response)), true)
   })
 
-  await t.test('stack trace should print all http related details', (t) => {
+  t.test('stack trace should print all http related details', (t) => {
     const err = new HttpError(message, status, statusText, headers, response)
 
     t.is(err.stack.includes(`HttpError: ${message}`), true)
@@ -73,7 +73,7 @@ test('http error tests', (t) => {
     t.is(err.stack.includes(format(response)), true)
   })
 
-  await t.test('stack trace should be rebuild when response is set later', (t) => {
+  t.test('stack trace should be rebuild when response is set later', (t) => {
     const err = new HttpError(message, status, statusText, headers)
 
     t.is(err.stack.includes(`HttpError: ${message}`), true)
@@ -86,7 +86,7 @@ test('http error tests', (t) => {
     t.is(err.stack.includes(format(response)), true)
   })
 
-  await t.test('stack trace should not duplicate multi-line headers when response is set later', (t) => {
+  t.test('stack trace should not duplicate multi-line headers when response is set later', (t) => {
     const multiLineHeaders = {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store',

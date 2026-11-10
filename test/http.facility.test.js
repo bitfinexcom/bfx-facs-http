@@ -98,8 +98,8 @@ test('http facility tests', async (t) => {
   }, { force: true })
   await new Promise((resolve, reject) => srv.listen(7070, (err) => err ? reject(err) : resolve()))
 
-  await t.test('constructor tests', async (t) => {
-    await t.test('should set base url to empty string when missing', async (t) => {
+  t.test('constructor tests', async (t) => {
+    t.test('should set base url to empty string when missing', async (t) => {
       await new Promise((resolve) => {
         const fac = new HttpFacility({}, {}, { env: 'test' })
 
@@ -111,8 +111,8 @@ test('http facility tests', async (t) => {
     })
   })
 
-  await t.test('_response tests', async (t) => {
-    await t.test('should perform call callback when provided', async (t) => {
+  t.test('_response tests', async (t) => {
+    t.test('should perform call callback when provided', async (t) => {
       await new Promise((resolve) => {
         fac._response(null, 123, {}, (err, res) => {
           t.is(err, null)
@@ -122,31 +122,32 @@ test('http facility tests', async (t) => {
       })
     })
 
-    await t.test('should reject promise when no callback is provided and error is present', async (t) => {
+    t.test('should reject promise when no callback is provided and error is present', async (t) => {
       await rejectsWith(t, fac._response(new Error('FOO'), 123, {}), 'FOO')
     })
 
-    await t.test('should resolve promise when no callback is provided and error is falsy', async (t) => {
+    t.test('should resolve promise when no callback is provided and error is falsy', async (t) => {
       const res = await fac._response(null, 123, {})
       t.alike(res, { body: 123, headers: {} })
     })
   })
 
-  await t.test('request tests', async (t) => {
+  t.test('request tests', async (t) => {
     let body = null
 
-    await t.test('should throw error on invalid url', async (t) => {
-      fac.baseUrl = ''
-      t.teardown(() => { fac.baseUrl = 'http://127.0.0.1:7070' }, { force: true })
+    t.test('should throw error on invalid url', async (t) => {
+      const noBaseUrlFac = new HttpFacility({}, {}, { env: 'test' })
+      await new Promise((resolve, reject) => noBaseUrlFac.start((err) => err ? reject(err) : resolve()))
+      t.teardown(() => new Promise((resolve, reject) => noBaseUrlFac.stop((err) => err ? reject(err) : resolve())), { force: true })
 
-      await rejectsWith(t, fac.request('foo/bar'), 'Only absolute URLs are supported')
+      await rejectsWith(t, noBaseUrlFac.request('foo/bar'), 'Only absolute URLs are supported')
     })
 
-    await t.test('should throw error on invalid request params', async (t) => {
+    t.test('should throw error on invalid request params', async (t) => {
       await rejectsWith(t, fac.request('http://127.0.0.1:7070', { method: 'cut' }), 'ERR_HTTP: 400 - Bad Request')
     })
 
-    await t.test('should parse http errors as expected', async (t) => {
+    t.test('should parse http errors as expected', async (t) => {
       route('GET', '/foo/bar/1', (req, res) => {
         sendJson(res, { auth: false }, 500)
       })
@@ -166,7 +167,7 @@ test('http facility tests', async (t) => {
       t.ok(httpErr.headers !== null && typeof httpErr.headers === 'object')
     })
 
-    await t.test('should support paths when base url is set', async (t) => {
+    t.test('should support paths when base url is set', async (t) => {
       route('GET', '/foo/bar/2', (req, res) => {
         sendText(res, 'test')
       })
@@ -175,7 +176,7 @@ test('http facility tests', async (t) => {
       t.is(resp, 'test')
     })
 
-    await t.test('should ignore leading slashes from url while concatenating url', async (t) => {
+    t.test('should ignore leading slashes from url while concatenating url', async (t) => {
       route('GET', '/foo/bar/3', (req, res) => {
         sendText(res, 'test')
       })
@@ -184,12 +185,12 @@ test('http facility tests', async (t) => {
       t.is(resp, 'test')
     })
 
-    await t.test('should ignore base url when path is full url', async (t) => {
+    t.test('should ignore base url when path is full url', async (t) => {
       const { body: resp } = await fac.request('https://www.google.com', { method: 'get' })
       t.ok(resp.includes('<html'))
     })
 
-    await t.test('should support body encodings', async (t) => {
+    t.test('should support body encodings', async (t) => {
       body = null
       route('POST', '/foo/bar/4', (req, res) => {
         body = req.body
@@ -207,7 +208,7 @@ test('http facility tests', async (t) => {
       t.alike(body, { data: 'test' })
     })
 
-    await t.test('should support different encodings for request and response', async (t) => {
+    t.test('should support different encodings for request and response', async (t) => {
       body = null
       route('POST', '/foo/bar/5', (req, res) => {
         body = req.body
@@ -228,7 +229,7 @@ test('http facility tests', async (t) => {
       t.alike(body, { data: 'test' })
     })
 
-    await t.test('should return text encoding by default on response', async (t) => {
+    t.test('should return text encoding by default on response', async (t) => {
       body = null
       route('POST', '/foo/bar/6', (req, res) => {
         body = req.body
@@ -248,7 +249,7 @@ test('http facility tests', async (t) => {
       t.alike(body, { data: 'test' })
     })
 
-    await t.test('should return text encoding by default on request body', async (t) => {
+    t.test('should return text encoding by default on request body', async (t) => {
       body = null
       const reqOpts = {
         method: 'post',
@@ -264,7 +265,7 @@ test('http facility tests', async (t) => {
       t.alike(body, { data: 'test' })
     })
 
-    await t.test('should use buffer encoding on response when response type is not supported', async (t) => {
+    t.test('should use buffer encoding on response when response type is not supported', async (t) => {
       body = null
       route('POST', '/foo/bar/7', (req, res) => {
         body = req.body
@@ -286,7 +287,7 @@ test('http facility tests', async (t) => {
       t.alike(body, { data: 'test' })
     })
 
-    await t.test('should support callbacks', async (t) => {
+    t.test('should support callbacks', async (t) => {
       await new Promise((resolve) => {
         fac.request('/foo/bar/3', { method: 'get' }, (err, res) => {
           t.is(err, null)
@@ -296,7 +297,7 @@ test('http facility tests', async (t) => {
       })
     })
 
-    await t.test('should handle errors in callbacks', async (t) => {
+    t.test('should handle errors in callbacks', async (t) => {
       await new Promise((resolve) => {
         fac.request('/foo/bar/1', { method: 'get' }, (err) => {
           t.ok(err instanceof HttpError)
@@ -310,7 +311,7 @@ test('http facility tests', async (t) => {
       })
     })
 
-    await t.test('should support callback as 2nd arg', async (t) => {
+    t.test('should support callback as 2nd arg', async (t) => {
       await new Promise((resolve) => {
         fac.request('/foo/bar/3', (err, res) => {
           t.is(err, null)
@@ -320,7 +321,7 @@ test('http facility tests', async (t) => {
       })
     })
 
-    await t.test('should support headers', async (t) => {
+    t.test('should support headers', async (t) => {
       body = null
       const reqOpts = {
         method: 'post',
@@ -333,20 +334,20 @@ test('http facility tests', async (t) => {
       t.alike(body, { data: 'test' })
     })
 
-    await t.test('should support redirect', async (t) => {
+    t.test('should support redirect', async (t) => {
       const { body: resp } = await fac.request('http://google.com', { method: 'get', redirect: true })
       t.ok(resp.includes('<html'))
 
       await rejectsWith(t, fac.request('http://google.com', { method: 'get', redirect: false }), 'ERR_HTTP: 301 - Moved Permanently')
     })
 
-    await t.test('should support user agents', async (t) => {
+    t.test('should support user agents', async (t) => {
       const agent = new http.Agent({ keepAlive: false })
       const { body: resp } = await fac.request('/foo/bar/3', { method: 'get', agent })
       t.is(resp, 'test')
     })
 
-    await t.test('should support timeout', async (t) => {
+    t.test('should support timeout', async (t) => {
       route('GET', '/foo/bar/timeout', (req, res) => {
         setTimeout(() => sendText(res, 'test'), 100)
       })
@@ -354,11 +355,11 @@ test('http facility tests', async (t) => {
       await rejectsWith(t, fac.request('/foo/bar/timeout', { method: 'get', timeout: 10 }), 'network timeout at: http://127.0.0.1:7070/foo/bar/timeout')
     })
 
-    await t.test('should throw error when encoding is wrong', async (t) => {
+    t.test('should throw error when encoding is wrong', async (t) => {
       await rejectsWith(t, fac.request('/foo/bar/3', { method: 'get', encoding: 'json' }), 'invalid json response body')
     })
 
-    await t.test('should support debugging', async (t) => {
+    t.test('should support debugging', async (t) => {
       let log = null
       const originalError = console.error
       console.error = (...params) => {
@@ -379,17 +380,17 @@ test('http facility tests', async (t) => {
       }
     })
 
-    await t.test('should support head method', async (t) => {
+    t.test('should support head method', async (t) => {
       const { headers } = await fac.request('https://api-pub.bitfinex.com/v2/conf/pub:list:currency', { method: 'head' })
       t.ok(headers['content-type'].includes('application/json'))
     })
 
-    await t.test('should support options method', async (t) => {
+    t.test('should support options method', async (t) => {
       const { headers } = await fac.request('https://api-pub.bitfinex.com/v2/conf/pub:list:currency', { method: 'options' })
       t.ok(headers.allow.includes('GET'))
     })
 
-    await t.test('should support streams', async (t) => {
+    t.test('should support streams', async (t) => {
       const readfile = join(__dirname, 'bfx.png')
       const writefile = join(__dirname, 'out.png')
 
@@ -411,7 +412,7 @@ test('http facility tests', async (t) => {
       t.is(fs.existsSync(writefile), true)
     })
 
-    await t.test('should support qs params', async (t) => {
+    t.test('should support qs params', async (t) => {
       route('GET', '/foo/bar/9', (req, res) => {
         sendJson(res, req.query)
       })
@@ -440,7 +441,7 @@ test('http facility tests', async (t) => {
       t.alike(resp.body, { a: ['2', '1'], b: 'c', d: 'e' })
     })
 
-    await t.test('should support basic authorization', async (t) => {
+    t.test('should support basic authorization', async (t) => {
       route('GET', '/foo/bar/basic-auth', (req, res) => {
         sendText(res, req.headers.authorization)
       })
@@ -455,7 +456,7 @@ test('http facility tests', async (t) => {
       t.is(resp.body, `Basic ${Buffer.from('user:pass').toString('base64')}`)
     })
 
-    await t.test('should not send basic authorization', async (t) => {
+    t.test('should not send basic authorization', async (t) => {
       route('GET', '/foo/bar/no-basic-auth', (req, res) => {
         sendText(res, req.headers.authorization)
       })
@@ -464,7 +465,7 @@ test('http facility tests', async (t) => {
       t.is(resp.body, '')
     })
 
-    await t.test('should support abort signals', async (t) => {
+    t.test('should support abort signals', async (t) => {
       route('GET', '/foo/bar/signal', () => { })
 
       const abortController = new AbortController()
@@ -475,53 +476,54 @@ test('http facility tests', async (t) => {
       await rejectsWith(t, fac.request('/foo/bar/signal', { method: 'get', timeout: 30000, signal: abortController.signal }), /aborted/)
     })
 
-    await t.test('DNS caching', async (t) => {
+    t.test('DNS caching', async (t) => {
       const lookupDomain = async (domain) => {
         const entry = await (new CacheableLookup()).lookupAsync(domain)
         return entry.address
       }
+      const createDnsFac = async (t) => {
+        const dnsFac = new HttpFacility({}, {}, { env: 'test' })
+        await new Promise((resolve, reject) => dnsFac.start((err) => err ? reject(err) : resolve()))
+        t.teardown(() => new Promise((resolve, reject) => dnsFac.stop((err) => err ? reject(err) : resolve())), { force: true })
+        return dnsFac
+      }
 
-      await t.test('should not perform dns caching by default', async (t) => {
-        fac.cacheableLookup._cache.clear()
-        fac.opts.dnsCaching = false
-        await fac.request('https://example.com', { method: 'get', timeout: 1000 })
+      t.test('should not perform dns caching by default', async (t) => {
+        const dnsFac = await createDnsFac(t)
+        await dnsFac.request('https://example.com', { method: 'get', timeout: 1000 })
 
-        t.alike(fac.cacheableLookup._cache.get('example.com'), undefined)
+        t.alike(dnsFac.cacheableLookup._cache.get('example.com'), undefined)
       })
 
-      await t.test('should support dns caching for https requests', async (t) => {
-        fac.cacheableLookup._cache.clear()
-        fac.opts.dnsCaching = false
-        await fac.request('https://example.com', { method: 'get', timeout: 1000, dnsCaching: true })
+      t.test('should support dns caching for https requests', async (t) => {
+        const dnsFac = await createDnsFac(t)
+        await dnsFac.request('https://example.com', { method: 'get', timeout: 1000, dnsCaching: true })
 
         const expectedAddress = await lookupDomain('example.com')
-        t.is(fac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress), true)
+        t.is(dnsFac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress), true)
       })
 
-      await t.test('should support dns caching for http requests', async (t) => {
-        fac.cacheableLookup._cache.clear()
-        fac.opts.dnsCaching = false
-        await fac.request('http://example.com', { method: 'get', timeout: 1000, dnsCaching: true })
+      t.test('should support dns caching for http requests', async (t) => {
+        const dnsFac = await createDnsFac(t)
+        await dnsFac.request('http://example.com', { method: 'get', timeout: 1000, dnsCaching: true })
 
         const expectedAddress = await lookupDomain('example.com')
-        t.is(fac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress), true)
+        t.is(dnsFac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress), true)
       })
 
-      await t.test('can be activated by default through fac opts', async (t) => {
-        fac.cacheableLookup._cache.clear()
-        fac.opts.dnsCaching = false
-        t.teardown(() => { fac.opts.dnsCaching = false }, { force: true })
-        fac.opts.dnsCaching = true
+      t.test('can be activated by default through fac opts', async (t) => {
+        const dnsFac = await createDnsFac(t)
+        dnsFac.opts.dnsCaching = true
 
-        await fac.request('https://example.com', { method: 'get', timeout: 1000 })
+        await dnsFac.request('https://example.com', { method: 'get', timeout: 1000 })
 
         const expectedAddress = await lookupDomain('example.com')
-        t.is(fac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress), true)
+        t.is(dnsFac.cacheableLookup._cache.get('example.com').some(e => e.address === expectedAddress), true)
       })
     })
   })
 
-  await t.test('abortTimeout tests', async (t) => {
+  t.test('abortTimeout tests', async (t) => {
     let abortFac = null
 
     route('GET', '/foo/bar/slow', (req, res) => {
@@ -535,40 +537,40 @@ test('http facility tests', async (t) => {
       abortFac.stop((err) => err ? reject(err) : resolve())
     }), { force: true })
 
-    await t.test('should default abortTimeout to 0 when not configured', (t) => {
+    t.test('should default abortTimeout to 0 when not configured', (t) => {
       t.is(fac.abortTimeout, 0)
     })
 
-    await t.test('should set abortTimeout from opts', (t) => {
+    t.test('should set abortTimeout from opts', (t) => {
       t.is(abortFac.abortTimeout, 500)
     })
 
-    await t.test('should abort slow requests with facility-level abortTimeout', async (t) => {
+    t.test('should abort slow requests with facility-level abortTimeout', async (t) => {
       await rejectsWith(t, abortFac.request('/foo/bar/slow?delay=3000', { timeout: 30000 }), /aborted/)
     })
 
-    await t.test('should succeed when request completes before abortTimeout', async (t) => {
+    t.test('should succeed when request completes before abortTimeout', async (t) => {
       const { body: resp } = await abortFac.request('/foo/bar/slow?delay=50', { timeout: 30000 })
       t.is(resp, 'slow response')
     })
 
-    await t.test('should allow per-request abortTimeout to override facility-level', async (t) => {
+    t.test('should allow per-request abortTimeout to override facility-level', async (t) => {
       const { body: resp } = await abortFac.request('/foo/bar/slow?delay=200', { abortTimeout: 2000, timeout: 30000 })
       t.is(resp, 'slow response')
     })
 
-    await t.test('should abort with per-request abortTimeout on fac without default', async (t) => {
+    t.test('should abort with per-request abortTimeout on fac without default', async (t) => {
       await rejectsWith(t, fac.request('/foo/bar/slow?delay=3000', { abortTimeout: 200, timeout: 30000 }), /aborted/)
     })
 
-    await t.test('should not create auto-controller when caller provides signal', async (t) => {
+    t.test('should not create auto-controller when caller provides signal', async (t) => {
       const controller = new AbortController()
       setTimeout(() => controller.abort(), 100)
 
       await rejectsWith(t, abortFac.request('/foo/bar/slow?delay=3000', { signal: controller.signal, abortTimeout: 30000, timeout: 30000 }), /aborted/)
     })
 
-    await t.test('should work with callback pattern', async (t) => {
+    t.test('should work with callback pattern', async (t) => {
       const result = await new Promise((resolve) => {
         abortFac.request('/foo/bar/slow?delay=3000', { timeout: 30000 }, (err) => {
           resolve(err)
@@ -578,22 +580,22 @@ test('http facility tests', async (t) => {
       t.is(result.name, 'AbortError')
     })
 
-    await t.test('should work through convenience methods', async (t) => {
+    t.test('should work through convenience methods', async (t) => {
       await rejectsWith(t, abortFac.get('/foo/bar/slow?delay=3000', { timeout: 30000 }), /aborted/)
     })
   })
 
-  await t.test('_methodRequest tests', async (t) => {
+  t.test('_methodRequest tests', async (t) => {
     route('GET', '/method_request_test', (req, res) => {
       sendText(res, 'foo')
     })
 
-    await t.test('should perform requests as expected', async (t) => {
+    t.test('should perform requests as expected', async (t) => {
       const { body: resp } = await fac._methodRequest('/method_request_test', 'get', { method: 'post' })
       t.is(resp, 'foo')
     })
 
-    await t.test('should support callbacks', async (t) => {
+    t.test('should support callbacks', async (t) => {
       await new Promise((resolve) => {
         fac._methodRequest('/method_request_test', 'get', { method: 'post' }, (err, res) => {
           t.is(err, null)
@@ -603,7 +605,7 @@ test('http facility tests', async (t) => {
       })
     })
 
-    await t.test('should support callback as 3nd arg', async (t) => {
+    t.test('should support callback as 3nd arg', async (t) => {
       await new Promise((resolve) => {
         fac._methodRequest('/method_request_test', 'get', (err, res) => {
           t.is(err, null)
@@ -613,23 +615,23 @@ test('http facility tests', async (t) => {
       })
     })
 
-    await t.test('should work without optional args', async (t) => {
+    t.test('should work without optional args', async (t) => {
       const { body: resp } = await fac._methodRequest('/method_request_test', 'get')
       t.is(resp, 'foo')
     })
   })
 
-  await t.test('get tests', async (t) => {
+  t.test('get tests', async (t) => {
     route('GET', '/get_test', (req, res) => {
       sendText(res, 'test')
     })
 
-    await t.test('should perform requests as expected', async (t) => {
+    t.test('should perform requests as expected', async (t) => {
       const { body: resp } = await fac.get('/get_test', { method: 'post' })
       t.is(resp, 'test')
     })
 
-    await t.test('should support callbacks', async (t) => {
+    t.test('should support callbacks', async (t) => {
       await new Promise((resolve) => {
         fac.get('/get_test', { method: 'post' }, (err, res) => {
           t.is(err, null)
@@ -639,7 +641,7 @@ test('http facility tests', async (t) => {
       })
     })
 
-    await t.test('should support callback as 2nd arg', async (t) => {
+    t.test('should support callback as 2nd arg', async (t) => {
       await new Promise((resolve) => {
         fac.get('/get_test', (err, res) => {
           t.is(err, null)
@@ -649,14 +651,13 @@ test('http facility tests', async (t) => {
       })
     })
 
-    await t.test('should work without optional args', async (t) => {
+    t.test('should work without optional args', async (t) => {
       const { body: resp } = await fac.get('/get_test')
       t.is(resp, 'test')
     })
   })
 
-  await t.test('post tests', async (t) => {
-    let body = null
+  t.test('post tests', async (t) => {
     const reqOpts = {
       method: 'get',
       body: 'foo=bar',
@@ -664,51 +665,46 @@ test('http facility tests', async (t) => {
     }
 
     route('POST', '/post_test', (req, res) => {
-      body = req.body
+      res.setHeader('x-received-body', JSON.stringify(req.body))
       sendText(res, 'bar')
     })
 
-    await t.test('should perform requests as expected', async (t) => {
-      body = null
-      const { body: resp } = await fac.post('/post_test', reqOpts)
+    t.test('should perform requests as expected', async (t) => {
+      const { body: resp, headers } = await fac.post('/post_test', reqOpts)
       t.is(resp, 'bar')
-      t.alike(body, { foo: 'bar' })
+      t.alike(JSON.parse(headers['x-received-body']), { foo: 'bar' })
     })
 
-    await t.test('should support callbacks', async (t) => {
-      body = null
+    t.test('should support callbacks', async (t) => {
       await new Promise((resolve) => {
         fac.post('/post_test', reqOpts, (err, res) => {
           t.is(err, null)
           t.is(res.body, 'bar')
-          t.alike(body, { foo: 'bar' })
+          t.alike(JSON.parse(res.headers['x-received-body']), { foo: 'bar' })
           resolve()
         })
       })
     })
 
-    await t.test('should support callback as 2nd arg', async (t) => {
-      body = null
+    t.test('should support callback as 2nd arg', async (t) => {
       await new Promise((resolve) => {
         fac.post('/post_test', (err, res) => {
           t.is(err, null)
           t.is(res.body, 'bar')
-          t.alike(body, {})
+          t.alike(JSON.parse(res.headers['x-received-body']), {})
           resolve()
         })
       })
     })
 
-    await t.test('should work without optional args', async (t) => {
-      body = null
-      const { body: resp } = await fac.post('/post_test')
+    t.test('should work without optional args', async (t) => {
+      const { body: resp, headers } = await fac.post('/post_test')
       t.is(resp, 'bar')
-      t.alike(body, {})
+      t.alike(JSON.parse(headers['x-received-body']), {})
     })
   })
 
-  await t.test('put tests', async (t) => {
-    let body = null
+  t.test('put tests', async (t) => {
     const reqOpts = {
       method: 'get',
       body: 'foo=bar',
@@ -716,51 +712,46 @@ test('http facility tests', async (t) => {
     }
 
     route('PUT', '/put_test', (req, res) => {
-      body = req.body
+      res.setHeader('x-received-body', JSON.stringify(req.body))
       sendText(res, 'bar')
     })
 
-    await t.test('should perform requests as expected', async (t) => {
-      body = null
-      const { body: resp } = await fac.put('/put_test', reqOpts)
+    t.test('should perform requests as expected', async (t) => {
+      const { body: resp, headers } = await fac.put('/put_test', reqOpts)
       t.is(resp, 'bar')
-      t.alike(body, { foo: 'bar' })
+      t.alike(JSON.parse(headers['x-received-body']), { foo: 'bar' })
     })
 
-    await t.test('should support callbacks', async (t) => {
-      body = null
+    t.test('should support callbacks', async (t) => {
       await new Promise((resolve) => {
         fac.put('/put_test', reqOpts, (err, res) => {
           t.is(err, null)
           t.is(res.body, 'bar')
-          t.alike(body, { foo: 'bar' })
+          t.alike(JSON.parse(res.headers['x-received-body']), { foo: 'bar' })
           resolve()
         })
       })
     })
 
-    await t.test('should support callback as 2nd arg', async (t) => {
-      body = null
+    t.test('should support callback as 2nd arg', async (t) => {
       await new Promise((resolve) => {
         fac.put('/put_test', (err, res) => {
           t.is(err, null)
           t.is(res.body, 'bar')
-          t.alike(body, {})
+          t.alike(JSON.parse(res.headers['x-received-body']), {})
           resolve()
         })
       })
     })
 
-    await t.test('should work without optional args', async (t) => {
-      body = null
-      const { body: resp } = await fac.put('/put_test')
+    t.test('should work without optional args', async (t) => {
+      const { body: resp, headers } = await fac.put('/put_test')
       t.is(resp, 'bar')
-      t.alike(body, {})
+      t.alike(JSON.parse(headers['x-received-body']), {})
     })
   })
 
-  await t.test('patch tests', async (t) => {
-    let body = null
+  t.test('patch tests', async (t) => {
     const reqOpts = {
       method: 'get',
       body: 'foo=bar',
@@ -768,51 +759,46 @@ test('http facility tests', async (t) => {
     }
 
     route('PATCH', '/patch_test', (req, res) => {
-      body = req.body
+      res.setHeader('x-received-body', JSON.stringify(req.body))
       sendText(res, 'bar')
     })
 
-    await t.test('should perform requests as expected', async (t) => {
-      body = null
-      const { body: resp } = await fac.patch('/patch_test', reqOpts)
+    t.test('should perform requests as expected', async (t) => {
+      const { body: resp, headers } = await fac.patch('/patch_test', reqOpts)
       t.is(resp, 'bar')
-      t.alike(body, { foo: 'bar' })
+      t.alike(JSON.parse(headers['x-received-body']), { foo: 'bar' })
     })
 
-    await t.test('should support callbacks', async (t) => {
-      body = null
+    t.test('should support callbacks', async (t) => {
       await new Promise((resolve) => {
         fac.patch('/patch_test', reqOpts, (err, res) => {
           t.is(err, null)
           t.is(res.body, 'bar')
-          t.alike(body, { foo: 'bar' })
+          t.alike(JSON.parse(res.headers['x-received-body']), { foo: 'bar' })
           resolve()
         })
       })
     })
 
-    await t.test('should support callback as 2nd arg', async (t) => {
-      body = null
+    t.test('should support callback as 2nd arg', async (t) => {
       await new Promise((resolve) => {
         fac.patch('/patch_test', (err, res) => {
           t.is(err, null)
           t.is(res.body, 'bar')
-          t.alike(body, {})
+          t.alike(JSON.parse(res.headers['x-received-body']), {})
           resolve()
         })
       })
     })
 
-    await t.test('should work without optional args', async (t) => {
-      body = null
-      const { body: resp } = await fac.patch('/patch_test')
+    t.test('should work without optional args', async (t) => {
+      const { body: resp, headers } = await fac.patch('/patch_test')
       t.is(resp, 'bar')
-      t.alike(body, {})
+      t.alike(JSON.parse(headers['x-received-body']), {})
     })
   })
 
-  await t.test('delete tests', async (t) => {
-    let body = null
+  t.test('delete tests', async (t) => {
     const reqOpts = {
       method: 'get',
       body: 'foo=bar',
@@ -820,56 +806,52 @@ test('http facility tests', async (t) => {
     }
 
     route('DELETE', '/delete_test', (req, res) => {
-      body = req.body
+      res.setHeader('x-received-body', JSON.stringify(req.body))
       sendText(res, 'bar')
     })
 
-    await t.test('should perform requests as expected', async (t) => {
-      body = null
-      const { body: resp } = await fac.delete('/delete_test', reqOpts)
+    t.test('should perform requests as expected', async (t) => {
+      const { body: resp, headers } = await fac.delete('/delete_test', reqOpts)
       t.is(resp, 'bar')
-      t.alike(body, { foo: 'bar' })
+      t.alike(JSON.parse(headers['x-received-body']), { foo: 'bar' })
     })
 
-    await t.test('should support callbacks', async (t) => {
-      body = null
+    t.test('should support callbacks', async (t) => {
       await new Promise((resolve) => {
         fac.delete('/delete_test', reqOpts, (err, res) => {
           t.is(err, null)
           t.is(res.body, 'bar')
-          t.alike(body, { foo: 'bar' })
+          t.alike(JSON.parse(res.headers['x-received-body']), { foo: 'bar' })
           resolve()
         })
       })
     })
 
-    await t.test('should support callback as 2nd arg', async (t) => {
-      body = null
+    t.test('should support callback as 2nd arg', async (t) => {
       await new Promise((resolve) => {
         fac.delete('/delete_test', (err, res) => {
           t.is(err, null)
           t.is(res.body, 'bar')
-          t.alike(body, {})
+          t.alike(JSON.parse(res.headers['x-received-body']), {})
           resolve()
         })
       })
     })
 
-    await t.test('should work without optional args', async (t) => {
-      body = null
-      const { body: resp } = await fac.delete('/delete_test')
+    t.test('should work without optional args', async (t) => {
+      const { body: resp, headers } = await fac.delete('/delete_test')
       t.is(resp, 'bar')
-      t.alike(body, {})
+      t.alike(JSON.parse(headers['x-received-body']), {})
     })
   })
 
-  await t.test('head tests', async (t) => {
-    await t.test('should perform requests as expected', async (t) => {
+  t.test('head tests', async (t) => {
+    t.test('should perform requests as expected', async (t) => {
       const { headers } = await fac.head('/get_test', { headers: { foo: 'bar' } })
       t.is(headers['content-type'], 'text/html; charset=utf-8')
     })
 
-    await t.test('should support callbacks', async (t) => {
+    t.test('should support callbacks', async (t) => {
       await new Promise((resolve) => {
         fac.head('/get_test', { headers: { foo: 'bar' } }, (err, res) => {
           t.is(err, null)
@@ -879,7 +861,7 @@ test('http facility tests', async (t) => {
       })
     })
 
-    await t.test('should support callback as 2nd arg', async (t) => {
+    t.test('should support callback as 2nd arg', async (t) => {
       await new Promise((resolve) => {
         fac.head('/get_test', (err, res) => {
           t.is(err, null)
@@ -889,19 +871,19 @@ test('http facility tests', async (t) => {
       })
     })
 
-    await t.test('should work without optional args', async (t) => {
+    t.test('should work without optional args', async (t) => {
       const { headers } = await fac.head('/get_test')
       t.is(headers['content-type'], 'text/html; charset=utf-8')
     })
   })
 
-  await t.test('options tests', async (t) => {
-    await t.test('should perform requests as expected', async (t) => {
+  t.test('options tests', async (t) => {
+    t.test('should perform requests as expected', async (t) => {
       const { headers } = await fac.options('/get_test', { headers: { foo: 'bar' } })
       t.is(headers.allow, 'GET,HEAD')
     })
 
-    await t.test('should support callbacks', async (t) => {
+    t.test('should support callbacks', async (t) => {
       await new Promise((resolve) => {
         fac.options('/get_test', { headers: { foo: 'bar' } }, (err, res) => {
           t.is(err, null)
@@ -911,7 +893,7 @@ test('http facility tests', async (t) => {
       })
     })
 
-    await t.test('should support callback as 2nd arg', async (t) => {
+    t.test('should support callback as 2nd arg', async (t) => {
       await new Promise((resolve) => {
         fac.options('/get_test', (err, res) => {
           t.is(err, null)
@@ -921,7 +903,7 @@ test('http facility tests', async (t) => {
       })
     })
 
-    await t.test('should work without optional args', async (t) => {
+    t.test('should work without optional args', async (t) => {
       const { headers } = await fac.options('/get_test')
       t.is(headers.allow, 'GET,HEAD')
     })
